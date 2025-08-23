@@ -1,6 +1,6 @@
 [package]
 name = "rv"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 
 [dependencies]
@@ -8,3 +8,4 @@ clap = { version = "4.5.43", features = ["derive"] }
 crossterm = "0.29.0"
 git2 = "0.20.2"
 reqwest = { version = "0.12.22", features = ["blocking"] }
+toml = "0.9.5"
