@@ -5,7 +5,7 @@ use async_openai::{
     Client,
     types::{
         ChatCompletionRequestMessage, ChatCompletionRequestSystemMessage,
-        ChatCompletionRequestUserMessage, CreateChatCompletionRequestArgs, Role,
+        ChatCompletionRequestUserMessage, CreateChatCompletionRequestArgs,
     },
 };
 use futures::StreamExt;

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
-use std::io::{self, Read};
+use std::io::Read;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DiffProfile {
@@ -55,7 +55,7 @@ impl Default for LLMConfig {
         LLMConfig {
             configuration_name: String::from("default"),
             provider: OpenAIProvider::OpenRouter,
-            model_id: String::from("openai/gpt-4o-mini"),
+            model_id: String::from("openai/gpt-5-mini"),
             api_key: String::from("[insert api key here]"),
             allow_reasoning: true,
             custom_prompt_mode: CustomPromptMode::None,
