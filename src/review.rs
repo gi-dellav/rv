@@ -1,1 +1,3 @@
-
+// NOTE: By ignoring all files in .gitignore, we normally don't have issues with special files
+//       that are useless for code review, with the exception of Cargo.lock beacuse for some
+//       twisted reason "it's a good idea to not put it in .gitignore"...
