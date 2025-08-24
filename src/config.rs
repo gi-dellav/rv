@@ -55,7 +55,7 @@ impl Default for LLMConfig {
         LLMConfig {
             configuration_name: String::from("default"),
             provider: OpenAIProvider::OpenRouter,
-            model_id: String::from("openai/gpt-5-mini"),
+            model_id: String::from("openai/gpt-4o-mini"),
             api_key: String::from("[insert api key here]"),
             allow_reasoning: true,
             custom_prompt_mode: CustomPromptMode::None,
