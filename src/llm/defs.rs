@@ -7,5 +7,5 @@ pub trait LLMProvider {
     fn set_model(self, model: String) -> Result<()>;
     //fn set_timeout(self, timeout_sec: i32) -> Result<()>;
 
-    fn stream_request_stdout(self, prompt: String);
+    fn stream_request_stdout(self, sys_prompt: String, review_prompt: String);
 }
