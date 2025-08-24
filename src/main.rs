@@ -9,7 +9,7 @@ pub use crate::config::RvConfig;
 fn main() {
     let rvc: RvConfig = Default::default();
 
-    println!("{:?}", rvc);
+    println!("{rvc:?}");
     println!("\n\n----\n\n");
     println!("{}", toml::to_string_pretty(&rvc).unwrap());
 }

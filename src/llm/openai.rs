@@ -56,7 +56,7 @@ impl OpenAIClient {
 
             for choice in chunk.choices {
                 if let Some(text) = choice.delta.content {
-                    print!("{}", text);
+                    print!("{text}");
                     out.flush()?;
 
                     full_text.push_str(&text);
@@ -73,16 +73,16 @@ impl OpenAIClient {
 
 impl LLMProvider for OpenAIClient {
     fn get_provider_name(self) -> String {
-        return format!("{:?}", self.provider);
+        format!("{:?}", self.provider)
     }
 
     fn set_api_key(mut self, key: String) -> Result<()> {
         self.api_key = key;
-        return Ok(());
+        Ok(())
     }
     fn set_model(mut self, model: String) -> Result<()> {
         self.model = model;
-        return Ok(());
+        Ok(())
     }
 
     fn stream_request_stdout(self, sys_prompt: String, review_prompt: String) {

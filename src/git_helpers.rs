@@ -7,6 +7,12 @@ pub struct ExpandedCommit {
     pub diffs: Option<Vec<String>>,
     pub sources: Option<Vec<PathBuf>>,
 }
+impl Default for ExpandedCommit {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ExpandedCommit {
     pub fn new() -> ExpandedCommit {
         ExpandedCommit {
@@ -44,7 +50,7 @@ pub fn staged_diffs(diff_profile: DiffProfile) -> Result<ExpandedCommit, git2::E
             .map(PathBuf::from)
             .unwrap_or_else(|| PathBuf::from("unknown"));
 
-        let buf = file_patches.entry(path).or_insert_with(String::new);
+        let buf = file_patches.entry(path).or_default();
 
         // Line content may not be valid UTF-8 (binary). Handle that gracefully.
         match str::from_utf8(line.content()) {
@@ -65,5 +71,5 @@ pub fn staged_diffs(diff_profile: DiffProfile) -> Result<ExpandedCommit, git2::E
         expcommit.sources = Some(result_sources);
     }
 
-    return Ok(expcommit);
+    Ok(expcommit)
 }

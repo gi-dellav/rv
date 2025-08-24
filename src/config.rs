@@ -70,10 +70,10 @@ impl Default for RvConfig {
         let llm_default_config: LLMConfig = Default::default();
         let llm_configs = vec![llm_default_config];
 
-        return RvConfig {
+        RvConfig {
             diff_profile,
             llm_configs,
-        };
+        }
     }
 }
 
@@ -85,7 +85,7 @@ impl RvConfig {
 
         let config: RvConfig = toml::from_str(&contents)?;
 
-        return Ok(config);
+        Ok(config)
     }
 
     fn load_default() -> anyhow::Result<RvConfig> {
@@ -94,7 +94,7 @@ impl RvConfig {
 
         if loaded_config.is_ok() {
             // Return succesfully loaded config
-            return Ok(loaded_config.unwrap());
+            Ok(loaded_config.unwrap())
         } else {
             // Create new config
             let new_config: RvConfig = Default::default();
@@ -103,7 +103,7 @@ impl RvConfig {
             let toml_string = toml::to_string_pretty(&new_config)?;
             fs::write("~/.config/rv/config.toml", toml_string)?;
 
-            return Ok(new_config);
+            Ok(new_config)
         }
     }
 }
@@ -115,9 +115,9 @@ pub enum OpenAIProvider {
 }
 impl OpenAIProvider {
     pub fn get_endpoint(self) -> String {
-        return match self {
+        match self {
             OpenAIProvider::OpenAI => String::from("https://api.openai.com/v1"),
             OpenAIProvider::OpenRouter => String::from("https://openrouter.ai/api/v1"),
-        };
+        }
     }
 }
