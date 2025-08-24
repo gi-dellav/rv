@@ -104,3 +104,16 @@ impl RvConfig {
         }
     }
 }
+
+pub enum OpenAIProvider {
+    OpenAI,
+    OpenRouter,
+}
+impl OpenAIProvider {
+    pub fn get_endpoint(self) -> String {
+        return match self {
+            OpenAIProvider::OpenAI => String::from("https://api.openai.com/v1"),
+            OpenAIProvider::OpenRouter => String::from("https://openrouter.ai/api/v1"),
+        };
+    }
+}
