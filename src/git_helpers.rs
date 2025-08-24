@@ -1,5 +1,6 @@
 use git2::{DiffFormat, DiffOptions, Repository};
 use std::{collections::HashMap, path::PathBuf, str};
+use crate::config::DiffProfile;
 
 /// Structure that allow to contain both the diff and the edited source file for commits or for staged edits
 pub struct ExpandedCommit {
