@@ -27,8 +27,7 @@ pub struct LLMConfig {
     pub api_key: String,
 
     pub allow_reasoning: bool,
-    pub print_reasoning: bool,
-
+    
     pub custom_prompt_mode: CustomPromptMode,
     pub custom_prompt: Option<String>,
 }
@@ -59,7 +58,6 @@ impl Default for LLMConfig {
             model_id: String::from("openai/gpt-5-mini"),
             api_key: String::from("[insert api key here]"),
             allow_reasoning: true,
-            print_reasoning: true,
             custom_prompt_mode: CustomPromptMode::None,
             custom_prompt: None,                        
         }
