@@ -1,6 +1,6 @@
+use crate::config::DiffProfile;
 use git2::{DiffFormat, DiffOptions, Repository};
 use std::{collections::HashMap, path::PathBuf, str};
-use crate::config::DiffProfile;
 
 /// Structure that allow to contain both the diff and the edited source file for commits or for staged edits
 pub struct ExpandedCommit {
@@ -16,7 +16,7 @@ impl ExpandedCommit {
     }
 }
 
-/// Get an ExpandedCommit rappresenting staged edits 
+/// Get an ExpandedCommit rappresenting staged edits
 pub fn staged_diffs(diff_profile: DiffProfile) -> Result<ExpandedCommit, git2::Error> {
     let repo = Repository::open(".")?;
     let index = repo.index()?;
