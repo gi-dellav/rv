@@ -4,8 +4,16 @@ use crate::config::DiffProfile;
 
 /// Structure that allow to contain both the diff and the edited source file for commits or for staged edits
 pub struct ExpandedCommit {
-    diffs: Option<Vec<String>>,
-    sources: Option<Vec<String>>,
+    pub diffs: Option<Vec<String>>,
+    pub sources: Option<Vec<PathBuf>>,
+}
+impl ExpandedCommit {
+    pub fn new() -> ExpandedCommit {
+        ExpandedCommit {
+            diffs: None,
+            sources: None,
+        }
+    }
 }
 
 /// Get an ExpandedCommit rappresenting staged edits 
@@ -47,8 +55,15 @@ pub fn staged_diffs(diff_profile: DiffProfile) -> Result<ExpandedCommit, git2::E
         true // continue printing
     })?;
 
-    // Convert to sorted Vec for deterministic output
-    let mut result: Vec<(PathBuf, String)> = file_patches.into_iter().collect();
-    result.sort_by_key(|(p, _)| p.clone());
-    Ok(result)
+    let result: Vec<(PathBuf, String)> = file_patches.into_iter().collect();
+    let (result_sources, result_diffs): (Vec<PathBuf>, Vec<String>) = result.into_iter().unzip();
+    let mut expcommit = ExpandedCommit::new();
+    if diff_profile.report_diffs {
+        expcommit.diffs = Some(result_diffs);
+    }
+    if diff_profile.report_sources {
+        expcommit.sources = Some(result_sources);
+    }
+
+    return Ok(expcommit);
 }
