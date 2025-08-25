@@ -1,6 +1,6 @@
 use crate::config::DiffProfile;
 use git2::{DiffFormat, DiffOptions, Repository};
-use std::{fs, collections::HashMap, path::PathBuf, str};
+use std::{fs, collections::HashMap, path::PathBuf, str, env, path::Path};
 
 /// Structure that allow to contain both the diff and the edited source file for commits or for staged edits
 #[derive(Clone, Debug)]
@@ -64,8 +64,13 @@ impl ExpandedCommit {
 
 /// Get an ExpandedCommit rappresenting staged edits
 pub fn staged_diffs(diff_profile: DiffProfile) -> Result<ExpandedCommit, git2::Error> {
-    let repo = Repository::open(".")?;
+    let repo = Repository::discover(".")?;
     let index = repo.index()?;
+
+    // Set cwd to repository main directory
+    let workdir: &Path = repo.workdir()
+      .ok_or("Bare repository has no working directory").unwrap();
+    env::set_current_dir(workdir).unwrap();
 
     // Try to get HEAD tree. If repo has no commits yet, treat HEAD tree as None.
     let head_tree = match repo.head() {

@@ -93,18 +93,18 @@ pub fn git_review(
           }
 
           // Select correct LLM configuration and setup OpenAIClient
-          let mut llm_configuration_default = rvconfig.default_llm_config; // Normally `default`
+          let mut llm_configuration_default = rvconfig.clone().default_llm_config; // Normally `default`
           let mut llm_configuration_key = llm_configuration_default;
-          let llm_configs = rvconfig.get_llm_configs();
+          let llm_configs = rvconfig.clone().get_llm_configs();
           if llm_selection.is_some() {
               llm_configuration_key = llm_selection.unwrap();
           } else {
-              if !(llm_configs.contains_key(llm_configuration_key)) {
+              if !(llm_configs.contains_key(&llm_configuration_key.clone())) {
                   println!("[ERROR] No LLM configuration specified or wrong configuration specified; either create a `default`-named configuration or use the --llm parameter to change the configuration used.");
                   process::exit(1);
               }
           }
-          let llm_configuration = llm_configs.get(&llm_configuration_key).unwrap();
+          let llm_configuration = llm_configs.get(&llm_configuration_key.clone()).unwrap();
 
           if llm_configuration.api_key == "[insert api key here]" {
               println!("[ERROR] Insert compatible API key inside `~/.config/rv/config.toml`");
