@@ -1,4 +1,4 @@
-use crate::config::OpenAIProvider;
+use crate::config::{LLMConfig, OpenAIProvider};
 use crate::llm::defs::LLMProvider;
 use anyhow::Result;
 use async_openai::{
@@ -18,6 +18,14 @@ pub struct OpenAIClient {
 }
 
 impl OpenAIClient {
+    pub fn from_config(llmconfig: LLMConfig) -> OpenAIClient {
+        OpenAIClient {
+          provider: llmconfig.provider,
+          api_key: llmconfig.api_key,
+          model: llmconfig.model_id,
+        }
+    }
+
     pub async fn stream_chat_to_terminal(
         self,
         sys_prompt: &str,
