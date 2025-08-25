@@ -24,12 +24,13 @@ NOTE: *rv* has been only tested on Linux; if possible try it on MacOS and Window
 
 ## Future work
 
-Things planned for the v1.0.0:
+Milestones planned for the v1.0.0:
+- project context support (either using README or `.rv_context`)
 - custom prompt support
 - raw mode support (selecting specific files or directory, skipping git integrations)
 - full git support (not only staged edits, but also commits, branches and PRs)
 
-Things planned for the future:
+Milestones planned for the future:
 - ollama support for local inference
 - custom OpenAPI support
 - *chat mode* for turning rv into a chatbot-like assistant
