@@ -1,5 +1,5 @@
 [package]
-name = "rv"
+name = "rv-tool"
 description = " Non-invasive AI code review for any type of workflow"
 version = "1.0.0-rc1"
 edition = "2024"
