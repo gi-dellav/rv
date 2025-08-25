@@ -1,3 +1,24 @@
-// NOTE: By ignoring all files in .gitignore, we normally don't have issues with special files
-//       that are useless for code review, with the exception of Cargo.lock beacuse for some
-//       twisted reason "it's a good idea to not put it in .gitignore"...
+use crate::config::RvConfig;
+use crate::git_helpers;
+use crate::llm;
+use crate::term_helpers;
+
+use std::path::PathBuf;
+
+pub fn raw_review(
+    rvconfig: RvConfig,
+    llm_selection: Option<String>,
+    file_path: Option<PathBuf>,
+    dir_path: Option<PathBuf>,
+    recursive: Option<bool>,
+) {
+}
+
+pub fn git_review(
+    rvconfig: RvConfig,
+    llm_selection: Option<String>,
+    commit: Option<String>,
+    branch: Option<String>,
+    github_pr: Option<String>,
+) {
+}

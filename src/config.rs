@@ -70,31 +70,31 @@ impl Default for RvConfig {
         let llm_default_config: LLMConfig = Default::default();
         let llm_configs = vec![llm_default_config];
 
-        RvConfig {
+        return RvConfig {
             diff_profile,
             llm_configs,
-        }
+        };
     }
 }
 
 impl RvConfig {
-    fn load_from_path(path: String) -> anyhow::Result<RvConfig> {
+    pub fn load_from_path(path: String) -> anyhow::Result<RvConfig> {
         let mut file = File::open(&path)?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
 
         let config: RvConfig = toml::from_str(&contents)?;
 
-        Ok(config)
+        return Ok(config);
     }
 
-    fn load_default() -> anyhow::Result<RvConfig> {
+    pub fn load_default() -> anyhow::Result<RvConfig> {
         let loaded_config: anyhow::Result<RvConfig> =
             RvConfig::load_from_path(String::from("~/.config/rv/config.toml"));
 
         if loaded_config.is_ok() {
             // Return succesfully loaded config
-            Ok(loaded_config.unwrap())
+            return Ok(loaded_config.unwrap());
         } else {
             // Create new config
             let new_config: RvConfig = Default::default();
@@ -103,7 +103,7 @@ impl RvConfig {
             let toml_string = toml::to_string_pretty(&new_config)?;
             fs::write("~/.config/rv/config.toml", toml_string)?;
 
-            Ok(new_config)
+            return Ok(new_config);
         }
     }
 }
@@ -115,9 +115,9 @@ pub enum OpenAIProvider {
 }
 impl OpenAIProvider {
     pub fn get_endpoint(self) -> String {
-        match self {
+        return match self {
             OpenAIProvider::OpenAI => String::from("https://api.openai.com/v1"),
             OpenAIProvider::OpenRouter => String::from("https://openrouter.ai/api/v1"),
-        }
+        };
     }
 }
