@@ -3,6 +3,7 @@ use git2::{DiffFormat, DiffOptions, Repository};
 use std::{fs, collections::HashMap, path::PathBuf, str};
 
 /// Structure that allow to contain both the diff and the edited source file for commits or for staged edits
+#[derive(Clone, Debug)]
 pub struct ExpandedCommit {
     pub diffs: Option<Vec<String>>,
     pub sources: Option<Vec<PathBuf>>,

@@ -79,5 +79,15 @@ pub fn git_review(
     } else {
         // Staging edits
         let expcommit = git_helpers::staged_diffs(rvconfig.diff_profile);
+
+        if expcommit.is_ok() {
+          // Convert to structured format
+          let review_prompt = expcommit.unwrap().get_xml_structure(rvconfig.diff_profile);
+
+          println!("{}", review_prompt);
+        } else {
+          println!("[ERROR] Git integrations failed. Are you running `rv` inside a Git repository?");
+          println!("      | [LOG] {:?}", expcommit);
+        }
     }
 }
