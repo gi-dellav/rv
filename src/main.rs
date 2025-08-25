@@ -26,6 +26,10 @@ struct Args {
     /// Github pull request to review
     pr: Option<String>, //TODO
 
+    #[arg(long)]
+    /// Print out XML structure of the code review.
+    log_xml_structure: Option<bool>,
+
     #[arg(long, value_hint = clap::ValueHint::FilePath)]
     /// Specific file to review
     file: Option<PathBuf>,
@@ -61,7 +65,7 @@ fn main() {
                 "[ERROR] You can enable only one parameter between --commit, --branch or --pr"
             );
         } else {
-            review::git_review(rvconfig, args.llm, args.commit, args.branch, args.pr);
+            review::git_review(rvconfig, args.llm, args.commit, args.branch, args.pr, args.log_xml_structure);
         }
     }
 }

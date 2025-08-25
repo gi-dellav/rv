@@ -69,6 +69,7 @@ pub fn git_review(
     commit: Option<String>,
     branch: Option<String>,
     github_pr: Option<String>,
+    log_xml_structure: Option<bool>,
 ) {
     if commit.is_some() {
         todo!("Git Commit support");
@@ -84,7 +85,10 @@ pub fn git_review(
           // Convert to structured format
           let review_prompt = expcommit.unwrap().get_xml_structure(rvconfig.diff_profile);
 
-          println!("{}", review_prompt);
+          if log_xml_structure.is_some() {
+            println!("{}", review_prompt);
+          }
+
         } else {
           println!("[ERROR] Git integrations failed. Are you running `rv` inside a Git repository?");
           println!("      | [LOG] {:?}", expcommit);
