@@ -1,7 +1,15 @@
 [package]
 name = "rv"
+description = " Non-invasive AI code review for any type of workflow"
 version = "1.0.0-rc1"
 edition = "2024"
+authors = ["gi-dellav"]
+readme = "README.md"
+repository = "https://github.com/gi-dellav/rv"
+homepage = "https://github.com/gi-dellav/rv"
+license = "GPL-2.0-or-later"
+keywords = ["coding", "tool", "cli", "ai", "llm"]
+
 
 [dependencies]
 anyhow = "1.0"
