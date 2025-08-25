@@ -14,6 +14,12 @@ It works as a CLI tool easy to use and integrate in any kind of workflow and it 
 
 ## How To Install
 
+### From crates.io
+
+Just run `cargo install rv-tool` in order to install the last version; then, follow the "From the source" guide from the third step.
+
+### From the source
+
 1. Clone the repository
 2. Compile using `cargo build --release`
 3. Run for the first time (just `rv`) in order to generate the configuration file
