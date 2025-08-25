@@ -1,6 +1,6 @@
 use crate::config::DiffProfile;
 use git2::{DiffFormat, DiffOptions, Repository};
-use std::{collections::HashMap, path::PathBuf, str};
+use std::{fs, collections::HashMap, path::PathBuf, str};
 
 /// Structure that allow to contain both the diff and the edited source file for commits or for staged edits
 pub struct ExpandedCommit {
@@ -13,6 +13,51 @@ impl ExpandedCommit {
             diffs: None,
             sources: None,
         }
+    }
+
+    /// Produce XML-like output useful for LLM prompting
+    /// This operation should always be successful
+    pub fn get_xml_structure(self, diff_profile: DiffProfile) -> String {
+        let mut xml_string = String::new();
+        let sources = self.sources.unwrap();
+
+        if diff_profile.report_diffs {
+            let mut diff_counter: usize = 0;
+            let diffs = self.diffs.unwrap();
+            for diff_val in diffs {
+                // Open <diff NAME> tag
+                xml_string.push_str("<diff ");
+                let diff_source_path = sources[diff_counter].to_str().unwrap();
+                xml_string.push_str(diff_source_path);
+                xml_string.push_str(" >\n");
+
+                // Add diff
+                xml_string.push_str(&diff_val);
+
+                // Close </diff> tag
+                xml_string.push_str("\n</diff>\n");
+
+                diff_counter += 1;
+            }
+        }
+        if diff_profile.report_sources {
+            for source_val in sources {
+                // Open <source NAME> tag
+                xml_string.push_str("<source ");
+                let source_path = source_val.to_str().unwrap();
+                xml_string.push_str(source_path);
+                xml_string.push_str(" >\n");
+
+                // Add source
+                let source_text = fs::read_to_string(&source_val).unwrap();
+                xml_string.push_str(&source_text);
+
+                // Close </source> tag
+                xml_string.push_str("\n</source>\n");
+            }
+        }
+
+        return xml_string;
     }
 }
 
@@ -65,9 +110,9 @@ pub fn staged_diffs(diff_profile: DiffProfile) -> Result<ExpandedCommit, git2::E
     if diff_profile.report_diffs {
         expcommit.diffs = Some(result_diffs);
     }
-    if diff_profile.report_sources {
-        expcommit.sources = Some(result_sources);
-    }
+    // Keep the sources in order to allow ExpandedCommit::get_xml_structure to find the namefile of diffs
+    // Don't worry, the report_sources variable will be considered in the get_xml_structure in order to allow source-less reports
+    expcommit.sources = Some(result_sources);
 
     return Ok(expcommit);
 }
