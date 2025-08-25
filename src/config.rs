@@ -1,7 +1,36 @@
 use std::fs::{self, File};
-use std::io::Read;
+use std::io::{self, ErrorKind, Read};
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
+use std::path::PathBuf;
+
+pub fn default_config_path() -> io::Result<PathBuf> {
+    // Build the path
+    let path: PathBuf = if let Some(mut dir) = dirs::config_dir() {
+        dir.push("rv");
+        dir.push("config.toml");
+        dir
+    } else {
+        // Fallback: $HOME/.config/rv/config.toml
+        let home = std::env::var_os("HOME").ok_or_else(|| {
+            io::Error::new(ErrorKind::NotFound, "could not determine config directory (no XDG config dir and HOME not set)")
+        })?;
+        let mut p = PathBuf::from(home);
+        p.push(".config");
+        p.push("rv");
+        p.push("config.toml");
+        p
+    };
+
+    // Ensure parent directory exists
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    } else {
+        return Err(io::Error::new(io::ErrorKind::Other, "config path has no parent directory"));
+    }
+
+    Ok(path)
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct DiffProfile {
@@ -92,8 +121,9 @@ impl RvConfig {
     }
 
     pub fn load_default() -> anyhow::Result<RvConfig> {
+        let config_path = default_config_path()?;
         let loaded_config: anyhow::Result<RvConfig> = RvConfig::load_from_path(
-            String::from("~/.config/rv/config.toml")
+            config_path.display().to_string()
         );
 
         if loaded_config.is_ok() {
@@ -105,7 +135,7 @@ impl RvConfig {
 
             // Save to disk as config.toml
             let toml_string = toml::to_string_pretty(&new_config)?;
-            fs::write("~/.config/rv/config.toml", toml_string)?;
+            fs::write(config_path, toml_string)?;
 
             return Ok(new_config);
         }
