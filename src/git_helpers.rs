@@ -8,6 +8,12 @@ pub struct ExpandedCommit {
     pub diffs: Option<Vec<String>>,
     pub sources: Option<Vec<PathBuf>>,
 }
+impl Default for ExpandedCommit {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ExpandedCommit {
     pub fn new() -> ExpandedCommit {
         ExpandedCommit {
@@ -58,7 +64,7 @@ impl ExpandedCommit {
             }
         }
 
-        return xml_string;
+        xml_string
     }
 }
 
@@ -100,7 +106,7 @@ pub fn staged_diffs(diff_profile: DiffProfile) -> Result<ExpandedCommit, git2::E
         // Most .gitignore won't consider Cargo.lock, even tho it's not a good idea to include in the review prompt
         // In the future we might implement a more polished .rvignore file that works as a .gitignore counterpart for rv
         if !(path.to_str().unwrap().contains("Cargo.lock")) {
-            let buf = file_patches.entry(path).or_insert_with(String::new);
+            let buf = file_patches.entry(path).or_default();
 
             // Line content may not be valid UTF-8 (binary). Handle that gracefully.
             match str::from_utf8(line.content()) {
@@ -122,5 +128,5 @@ pub fn staged_diffs(diff_profile: DiffProfile) -> Result<ExpandedCommit, git2::E
     // Don't worry, the report_sources variable will be considered in the get_xml_structure in order to allow source-less reports
     expcommit.sources = Some(result_sources);
 
-    return Ok(expcommit);
+    Ok(expcommit)
 }

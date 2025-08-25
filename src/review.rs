@@ -88,7 +88,7 @@ pub fn git_review(
 
             term_helpers::clear_term();
             if log_xml_structure.is_some() {
-                println!("{}", review_prompt);
+                println!("{review_prompt}");
                 println!("  -------  ");
             }
 
@@ -98,13 +98,11 @@ pub fn git_review(
             let llm_configs = rvconfig.clone().get_llm_configs();
             if llm_selection.is_some() {
                 llm_configuration_key = llm_selection.unwrap();
-            } else {
-                if !(llm_configs.contains_key(&llm_configuration_key.clone())) {
-                    println!(
-                        "[ERROR] No LLM configuration specified or wrong configuration specified; either create a `default`-named configuration or use the --llm parameter to change the configuration used."
-                    );
-                    process::exit(1);
-                }
+            } else if !(llm_configs.contains_key(&llm_configuration_key.clone())) {
+                println!(
+                    "[ERROR] No LLM configuration specified or wrong configuration specified; either create a `default`-named configuration or use the --llm parameter to change the configuration used."
+                );
+                process::exit(1);
             }
             let llm_configuration = llm_configs.get(&llm_configuration_key.clone()).unwrap();
 
@@ -121,7 +119,7 @@ pub fn git_review(
             println!(
                 "[ERROR] Git integrations failed. Are you running `rv` inside a Git repository?"
             );
-            println!("      | [LOG] {:?}", expcommit);
+            println!("      | [LOG] {expcommit:?}");
         }
     }
 }
