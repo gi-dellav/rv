@@ -1,7 +1,7 @@
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{self, ErrorKind, Read};
-use serde::{Serialize, Deserialize};
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 pub fn default_config_path() -> io::Result<PathBuf> {
@@ -13,7 +13,10 @@ pub fn default_config_path() -> io::Result<PathBuf> {
     } else {
         // Fallback: $HOME/.config/rv/config.toml
         let home = std::env::var_os("HOME").ok_or_else(|| {
-            io::Error::new(ErrorKind::NotFound, "could not determine config directory (no XDG config dir and HOME not set)")
+            io::Error::new(
+                ErrorKind::NotFound,
+                "could not determine config directory (no XDG config dir and HOME not set)",
+            )
         })?;
         let mut p = PathBuf::from(home);
         p.push(".config");
@@ -26,7 +29,10 @@ pub fn default_config_path() -> io::Result<PathBuf> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     } else {
-        return Err(io::Error::new(io::ErrorKind::Other, "config path has no parent directory"));
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "config path has no parent directory",
+        ));
     }
 
     Ok(path)
@@ -42,7 +48,7 @@ pub struct DiffProfile {
 pub enum CustomPromptMode {
     #[default]
     None,
-    
+
     Replace,
     Suffix,
     Prefix,
@@ -57,7 +63,7 @@ pub struct LLMConfig {
     pub api_key: String,
 
     pub allow_reasoning: bool,
-    
+
     pub custom_prompt_mode: CustomPromptMode,
     pub custom_prompt: Option<String>,
 }
@@ -76,7 +82,7 @@ impl Default for DiffProfile {
     fn default() -> Self {
         DiffProfile {
             report_diffs: true,
-            report_sources: true,   
+            report_sources: true,
         }
     }
 }
@@ -90,7 +96,7 @@ impl Default for LLMConfig {
             api_key: String::from("[insert api key here]"),
             allow_reasoning: true,
             custom_prompt_mode: CustomPromptMode::None,
-            custom_prompt: None,                        
+            custom_prompt: None,
         }
     }
 }
@@ -100,12 +106,12 @@ impl Default for RvConfig {
         let diff_profile: DiffProfile = Default::default();
         let llm_default_config: LLMConfig = Default::default();
         let llm_configs = vec![llm_default_config];
-        
+
         return RvConfig {
             diff_profile,
             llm_configs,
             default_llm_config: String::from("default"),
-        }
+        };
     }
 }
 
@@ -122,9 +128,8 @@ impl RvConfig {
 
     pub fn load_default() -> anyhow::Result<RvConfig> {
         let config_path = default_config_path()?;
-        let loaded_config: anyhow::Result<RvConfig> = RvConfig::load_from_path(
-            config_path.display().to_string()
-        );
+        let loaded_config: anyhow::Result<RvConfig> =
+            RvConfig::load_from_path(config_path.display().to_string());
 
         if loaded_config.is_ok() {
             // Return succesfully loaded config
@@ -148,7 +153,7 @@ impl RvConfig {
             llm_hashmap.insert(lc.configuration_name.clone(), lc.clone());
         }
 
-        return llm_hashmap
+        return llm_hashmap;
     }
 }
 
@@ -160,9 +165,8 @@ pub enum OpenAIProvider {
 impl OpenAIProvider {
     pub fn get_endpoint(self) -> String {
         return match self {
-            OpenAIProvider::OpenAI => { String::from("https://api.openai.com/v1") },
-            OpenAIProvider::OpenRouter => { String::from("https://openrouter.ai/api/v1") },
+            OpenAIProvider::OpenAI => String::from("https://api.openai.com/v1"),
+            OpenAIProvider::OpenRouter => String::from("https://openrouter.ai/api/v1"),
         };
-    } 
+    }
 }
-
