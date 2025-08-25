@@ -49,7 +49,7 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let mut rvconfig = config::RvConfig::load_default().unwrap();
+    let rvconfig = config::RvConfig::load_default().unwrap();
     let raw_mode = args.raw.unwrap_or(false);
 
     if raw_mode {
@@ -65,7 +65,14 @@ fn main() {
                 "[ERROR] You can enable only one parameter between --commit, --branch or --pr"
             );
         } else {
-            review::git_review(rvconfig, args.llm, args.commit, args.branch, args.pr, args.log_xml_structure);
+            review::git_review(
+                rvconfig,
+                args.llm,
+                args.commit,
+                args.branch,
+                args.pr,
+                args.log_xml_structure,
+            );
         }
     }
 }

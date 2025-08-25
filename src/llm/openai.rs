@@ -20,9 +20,9 @@ pub struct OpenAIClient {
 impl OpenAIClient {
     pub fn from_config(llmconfig: LLMConfig) -> OpenAIClient {
         OpenAIClient {
-          provider: llmconfig.provider,
-          api_key: llmconfig.api_key,
-          model: llmconfig.model_id,
+            provider: llmconfig.provider,
+            api_key: llmconfig.api_key,
+            model: llmconfig.model_id,
         }
     }
 

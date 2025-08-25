@@ -1,6 +1,6 @@
 use crate::config::RvConfig;
 use crate::git_helpers;
-use crate::llm::{self, openai::OpenAIClient, defs::LLMProvider};
+use crate::llm::{defs::LLMProvider, openai::OpenAIClient};
 use crate::term_helpers;
 
 use std::path::PathBuf;
@@ -83,45 +83,45 @@ pub fn git_review(
         let expcommit = git_helpers::staged_diffs(rvconfig.diff_profile);
 
         if expcommit.is_ok() {
-          // Convert to structured format
-          let review_prompt = expcommit.unwrap().get_xml_structure(rvconfig.diff_profile);
+            // Convert to structured format
+            let review_prompt = expcommit.unwrap().get_xml_structure(rvconfig.diff_profile);
 
-          term_helpers::clear_term();
-          if log_xml_structure.is_some() {
-            println!("{}", review_prompt);
-            println!("  -------  ");
-          }
+            term_helpers::clear_term();
+            if log_xml_structure.is_some() {
+                println!("{}", review_prompt);
+                println!("  -------  ");
+            }
 
-          // Select correct LLM configuration and setup OpenAIClient
-          let mut llm_configuration_default = rvconfig.clone().default_llm_config; // Normally `default`
-          let mut llm_configuration_key = llm_configuration_default;
-          let llm_configs = rvconfig.clone().get_llm_configs();
-          if llm_selection.is_some() {
-              llm_configuration_key = llm_selection.unwrap();
-          } else {
-              if !(llm_configs.contains_key(&llm_configuration_key.clone())) {
-                  println!("[ERROR] No LLM configuration specified or wrong configuration specified; either create a `default`-named configuration or use the --llm parameter to change the configuration used.");
-                  process::exit(1);
-              }
-          }
-          let llm_configuration = llm_configs.get(&llm_configuration_key.clone()).unwrap();
+            // Select correct LLM configuration and setup OpenAIClient
+            let llm_configuration_default = rvconfig.clone().default_llm_config; // Normally `default`
+            let mut llm_configuration_key = llm_configuration_default;
+            let llm_configs = rvconfig.clone().get_llm_configs();
+            if llm_selection.is_some() {
+                llm_configuration_key = llm_selection.unwrap();
+            } else {
+                if !(llm_configs.contains_key(&llm_configuration_key.clone())) {
+                    println!(
+                        "[ERROR] No LLM configuration specified or wrong configuration specified; either create a `default`-named configuration or use the --llm parameter to change the configuration used."
+                    );
+                    process::exit(1);
+                }
+            }
+            let llm_configuration = llm_configs.get(&llm_configuration_key.clone()).unwrap();
 
-          if llm_configuration.api_key == "[insert api key here]" {
-              println!("[ERROR] Insert compatible API key inside `~/.config/rv/config.toml`");
-              process::exit(1);
-          }
+            if llm_configuration.api_key == "[insert api key here]" {
+                println!("[ERROR] Insert compatible API key inside `~/.config/rv/config.toml`");
+                process::exit(1);
+            }
 
-          let openai_client = OpenAIClient::from_config(llm_configuration.clone());
+            let openai_client = OpenAIClient::from_config(llm_configuration.clone());
 
-          // TODO Custom Prompt support
-          openai_client.stream_request_stdout(
-            SYSTEM_PROMPT.to_string(),
-            review_prompt
-          );
-
+            // TODO Custom Prompt support
+            openai_client.stream_request_stdout(SYSTEM_PROMPT.to_string(), review_prompt);
         } else {
-          println!("[ERROR] Git integrations failed. Are you running `rv` inside a Git repository?");
-          println!("      | [LOG] {:?}", expcommit);
+            println!(
+                "[ERROR] Git integrations failed. Are you running `rv` inside a Git repository?"
+            );
+            println!("      | [LOG] {:?}", expcommit);
         }
     }
 }
