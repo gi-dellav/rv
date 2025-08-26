@@ -1,4 +1,4 @@
-use crate::config::RvConfig;
+use crate::config::{ContextFile, RvConfig};
 use crate::git_helpers;
 use crate::llm::{defs::LLMProvider, openai::OpenAIClient};
 use crate::term_helpers;
@@ -37,6 +37,7 @@ CONTENT RULES
 - If you need runtime assumptions (platform, version), assume latest stable toolchain unless I say otherwise.
 - When referencing the source code or when suggesting fixes or changes, ALWAYS write the correct path of the source file and the correct line number.
 - Always consider the comments found in the source code, expecially if there are `[review]` or `[rv]` notes (they are directed to code review operators like you).
+- [IMPORTANT] In order to say that something is redundant or repeated, check if it appears two or mode times in <source> tags; ignore <diff> tags for this check.
 
 INPUT
 - After this prompt I will provided an input formatted using:
@@ -47,6 +48,16 @@ INPUT
 
 --------
 "#;
+const CUSTOM_GUIDELINES_INTRO: &str = r#"
+
+PROJECT GUIDELINES
+"#;
+
+pub fn search_context_files(
+  context_file: ContextFile
+) -> PathBuf {
+  todo!();
+}
 
 pub fn raw_review(
     rvconfig: RvConfig,

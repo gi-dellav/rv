@@ -1,6 +1,6 @@
 use crate::config::DiffProfile;
-use git2::{DiffFormat, DiffOptions, Repository};
-use std::{collections::HashMap, env, fs, path::Path, path::PathBuf, str};
+use git2::{Error, Commit, BranchType, Oid, Tree, DiffFormat, DiffOptions, Repository};
+use std::{collections::{BTreeSet, HashMap}, env, fs, path::Path, path::PathBuf, str};
 
 /// Structure that allow to contain both the diff and the edited source file for commits or for staged edits
 #[derive(Clone, Debug)]
@@ -134,4 +134,130 @@ pub fn staged_diffs(diff_profile: DiffProfile) -> Result<ExpandedCommit, git2::E
     expcommit.sources = Some(result_sources);
 
     Ok(expcommit)
+}
+
+fn diff_trees_to_expanded(
+    repo: &Repository,
+    old_tree: Option<&Tree>,
+    new_tree: Option<&Tree>,
+) -> Result<ExpandedCommit, git2::Error> {
+    let diff = repo.diff_tree_to_tree(old_tree, new_tree, None)?;
+    // Collect patches (one string per file) and touched files
+    let mut patches: Vec<String> = Vec::new();
+    let mut current_patch = String::new();
+    let mut last_file: Option<PathBuf> = None;
+    let mut touched: BTreeSet<PathBuf> = BTreeSet::new();
+
+    diff.print(DiffFormat::Patch, |delta, _hunk, line| {
+        // Determine the file path for this delta: prefer the new file path, else old file path
+        let maybe_path = delta.new_file().path().or(delta.old_file().path()).map(|p| p.to_path_buf());
+        // If the delta changed (a new file's patch started), flush the previous patch
+        if last_file.as_ref() != maybe_path.as_ref() {
+            if !current_patch.is_empty() {
+                patches.push(std::mem::take(&mut current_patch));
+            }
+            last_file = maybe_path.clone();
+        }
+
+        // Append the line content (may be binary; try to decode as UTF-8)
+        let content = line.content();
+        match std::str::from_utf8(content) {
+            Ok(s) => current_patch.push_str(s),
+            Err(_) => current_patch.push_str(&format!("<non-utf8 {} bytes>", content.len())),
+        }
+
+        if let Some(p) = maybe_path {
+            touched.insert(p);
+        }
+        // return true to continue processing
+        true
+    })?;
+
+    // push the last accumulated patch if any
+    if !current_patch.is_empty() {
+        patches.push(current_patch);
+    }
+
+    Ok(ExpandedCommit {
+        diffs: if patches.is_empty() { None } else { Some(patches) },
+        sources: if touched.is_empty() { None } else { Some(touched.into_iter().collect()) },
+    })
+}
+
+/// Build an ExpandedCommit for a given commit OID.
+pub fn expanded_from_commit(repo: &Repository, oid: Oid) -> Result<ExpandedCommit, git2::Error> {
+    let commit = repo.find_commit(oid)?;
+    let new_tree = commit.tree().ok();
+    // parent tree (if any)
+    let old_tree = if commit.parent_count() > 0 {
+        Some(commit.parent(0)?.tree()?)
+    } else {
+        None
+    };
+    // Note: we want Option<&Tree> for diff_tree_to_tree
+    let old_tree_ref = old_tree.as_ref();
+    let new_tree_ref = new_tree.as_ref();
+    diff_trees_to_expanded(repo, old_tree_ref, new_tree_ref)
+}
+
+/// Build an ExpandedCommit for HEAD (last commit on current branch).
+pub fn expanded_from_head(repo: &Repository) -> Result<ExpandedCommit, git2::Error> {
+    let head_ref = repo.head()?;
+    let head_commit = head_ref.peel_to_commit()?;
+    expanded_from_commit(repo, head_commit.id())
+}
+
+/// Enum to control what to compare a branch against
+pub enum BranchAgainst {
+    /// Compare branch against the current HEAD
+    Current,
+    /// Compare branch against the repository's `main`
+    Main,
+}
+
+/// Try to find the `main` branch commit; fall back to `master` if `main` is not present.
+fn find_main_commit(repo: &Repository) -> Result<Commit, git2::Error> {
+    // Try "refs/heads/main", then "refs/heads/master"
+    if let Ok(branch) = repo.find_branch("main", BranchType::Local) {
+        let commit = branch.into_reference().peel_to_commit()?;
+        return Ok(commit);
+    }
+    if let Ok(branch) = repo.find_branch("master", BranchType::Local) {
+        let commit = branch.into_reference().peel_to_commit()?;
+        return Ok(commit);
+    }
+    // Not found: return an error from repo.head() to provide a git2::Error
+    Err(Error::from_str("no 'main' or 'master' branch found"))
+}
+
+/// Compare the tip of `branch_name` against either the current HEAD or `main`/`master`.
+/// Returns the diff between `base` (the `against` target) and the branch tip:
+/// i.e., diff(base_tree, branch_tree) so the produced patches reflect changes from base -> branch.
+pub fn expanded_from_branch_against(
+    repo: &Repository,
+    branch_name: &str,
+    against: BranchAgainst,
+) -> Result<ExpandedCommit, git2::Error> {
+    // Find branch commit
+    let branch = repo.find_branch(branch_name, BranchType::Local)?;
+    let branch_commit = branch.into_reference().peel_to_commit()?;
+
+    // Determine base commit to compare against
+    let base_commit: Option<Commit> = match against {
+        BranchAgainst::Current => {
+            // If HEAD is unborn (no commits), repo.head() may fail; handle by returning an error
+            let head_ref = repo.head()?;
+            Some(head_ref.peel_to_commit()?)
+        }
+        BranchAgainst::Main => Some(find_main_commit(repo)?),
+    };
+
+    // get trees (Option<&Tree>)
+    let new_tree = branch_commit.tree().ok();
+    let old_tree = base_commit.as_ref().and_then(|c| c.tree().ok());
+
+    let old_tree_ref = old_tree.as_ref();
+    let new_tree_ref = new_tree.as_ref();
+
+    diff_trees_to_expanded(repo, old_tree_ref, new_tree_ref)
 }

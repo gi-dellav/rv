@@ -169,3 +169,9 @@ impl OpenAIProvider {
         }
     }
 }
+
+pub enum ContextFile {
+  Readme,
+  RvContext,
+  RvGuidelines,
+}
