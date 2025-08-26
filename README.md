@@ -31,7 +31,7 @@ NOTE: *rv* has been only tested on Linux; if possible try it on MacOS and Window
 ## Future work
 
 Milestones planned for the v1.0.0:
-- project context support (either using README or `.rv_context`)
+- basic project context support (using README files, `.rv_context` and `.rv_guidelines`)
 - custom prompt support
 - raw mode support (selecting specific files or directory, skipping git integrations)
 - full git support (not only staged edits, but also commits, branches and PRs)
@@ -41,3 +41,4 @@ Milestones planned for the future:
 - custom OpenAPI support
 - *chat mode* for turning rv into a chatbot-like assistant
 - *actions mode* for executing common git commands with one keystroke
+- full project context support (indexed references to other code or text files, full project reviews for better security and architectural reports)
