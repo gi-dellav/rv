@@ -7,7 +7,7 @@ It works as a CLI tool easy to use and integrate in any kind of workflow and it 
 
 - **Unix philosophy** <br> *rv* follows the Unix philosophy by providing one minimalstic tool (<1k LoC) that does one thing (code review) well.
 - **Cheap and low-latency** <br> *rv* is optimized to use cheap and low-latency models in order to allow for reviews that takes less than 5 seconds and cost about $0.001 (on average, tested with gpt-4o-mini)
-- **Deterministic** <br> *rv* uses deterministic sampling (LLM's temperature set to 0 and other parameters tweaked) in order to avoid anomalies in the output.
+- **Deterministic** <br> *rv* uses deterministic sampling (LLM's temperature set to 0 and other parameters tweaked) in order to avoid anomalies in the output. <br> NOTE: Beacuse of issues like token tie-breaking or non-deterministic floating point operations on GPUs, results might not be fully deterministic; we plan on implementing seed support on supported providers in order to allow for fully deterministic prompting
 - **Fully customizable** <br> *rv* is designed to give full freedom with its configuration file, allowing for different providers, LLMs and prompts
 - **Semplicity of code** <br> *rv* is designed to be written using clean, understandable and safe (as in no `unsafe` instructions used) Rust code
 - **Open source and non-monetized** <br> *rv* is released under the GPL license and we won't sell subscriptions, cloud credits or other form of monetized services to our end users
@@ -41,4 +41,5 @@ Milestones planned for the future:
 - custom OpenAPI support
 - *chat mode* for turning rv into a chatbot-like assistant
 - *actions mode* for executing common git commands with one keystroke
+- *fix mode* for producing and applying fixes from the code review using LLMs
 - full project context support (indexed references to other code or text files, full project reviews for better security and architectural reports)
