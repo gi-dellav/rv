@@ -16,7 +16,7 @@ It works as a CLI tool easy to use and integrate in any kind of workflow and it 
 
 ### From crates.io
 
-Just run `cargo install rv-tool --version 1.0.0-rc2` in order to install the last version (the specified version is only needed on testing releases); then, follow the "From the source" guide from the third step.
+Just run `cargo install rv-tool --version 1.0.0-rc3` in order to install the last version (the specified version is only needed on testing releases); then, follow the "From the source" guide from the third step.
 
 ### From the source
 
@@ -27,6 +27,18 @@ Just run `cargo install rv-tool --version 1.0.0-rc2` in order to install the las
 5. *rv* is now installed and ready! Run `rv` while you have staged edits (aka after `git add`) in order to get a code review of your current progress
 
 NOTE: *rv* has been only tested on Linux; if possible try it on MacOS and Windows and open an issue with the results.
+
+## How to setup APIs
+
+We reccomend using [OpenRouter]() as it allows to use different models, connect to different APIs (such as Azure, Anthropic, Cloudflare, Google and Mistral), and access some free models.  
+Here are the links for [creating an account](https://openrouter.ai/), [managing API keys](https://openrouter.ai/settings/keys), [connecting other provider](https://openrouter.ai/settings/integrations) and [viewing all free models](https://openrouter.ai/models?max_price=0).  
+Once you have the API key, you can insert it in your configuration file (on Linux, `~/.config/rv/config.toml`).    
+
+## Note about model
+
+The current default model is `deepseek/deepseek-r1:free`, which provides great reasoning code reviews without having to pay.   
+If your usage surpasses the limits of the free tier consider using `deepseek/deepseek-r1` and if you need a low-latency alternative, try `openai/gpt-4o-mini`.    
+A good setup might be to have a low-latency configuration for most reviews and a reasoning configuration in case low-latency reviews are not enough for the current tasks; you can switch between different configurations using `-l`/`--llm`.
 
 ## Future work
 
