@@ -47,8 +47,8 @@ impl OpenAIClient {
                 )),
             ])
             .temperature(0.0)
-            .frequency_penalty(0.0)
-            .presence_penalty(0.0)
+            .frequency_penalty(0.5)
+            .presence_penalty(0.6)
             .stream(true)
             .build()?;
 
