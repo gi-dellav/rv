@@ -41,4 +41,5 @@ Milestones planned for the future:
 - custom OpenAPI support
 - *chat mode* for turning rv into a chatbot-like assistant
 - *actions mode* for executing common git commands with one keystroke
+- *fix mode* for producing and applying fixes from the code review using LLMs
 - full project context support (indexed references to other code or text files, full project reviews for better security and architectural reports)
