@@ -34,11 +34,23 @@ We reccomend using [OpenRouter]() as it allows to use different models, connect 
 Here are the links for [creating an account](https://openrouter.ai/), [managing API keys](https://openrouter.ai/settings/keys), [connecting other provider](https://openrouter.ai/settings/integrations) and [viewing all free models](https://openrouter.ai/models?max_price=0).  
 Once you have the API key, you can insert it in your configuration file (on Linux, `~/.config/rv/config.toml`).    
 
-## Note about model
+## Note about models
 
 The current default model is `deepseek/deepseek-r1:free`, which provides great reasoning code reviews without having to pay.   
 If your usage surpasses the limits of the free tier consider using `deepseek/deepseek-r1` and if you need a low-latency alternative, try `openai/gpt-4o-mini`.    
 A good setup might be to have a low-latency configuration for most reviews and a reasoning configuration in case low-latency reviews are not enough for the current tasks; you can switch between different configurations using `-l`/`--llm`.
+
+### Benchmarks
+
+Tested with a simple commit with routine line changes (relevant as lots of diffs can induce certain models to allucinate).
+All of the models in this table can do basic code review, but only the more advanced can do high-quality reports.
+
+| Model    | Time Spent | Cost | Reasoning | Basic Test | Repetition Test | Coding Rating (LiveBench) |
+|--|--|--|--|--|--|--|
+|`openai/gpt-4o-mini`| 7s | 0,0003$ | ❌ | ✅ | ❌ | <69.29 |
+|`openai/gpt-4o`| 11s | 0,006$ | ❌ | ✅ | ❌ | 69.29 |
+|`deepseek/deepseek-r1`| 49s | 0,006$ | ✅ | ✅ | ✅ | 76.07 |
+|`deepseek/deepseek-r1:free`| 50s | 0$ | ✅ | ✅ | ✅ | 76.07 |
 
 ## Future work
 
