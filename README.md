@@ -71,6 +71,7 @@ Milestones planned for the v1.0.0:
 - basic project context support (using README files, `.rv_context` and `.rv_guidelines`)
 - custom prompt support
 - raw mode support (selecting specific files or directory, skipping git integrations)
+- support for alternative structure data formats for LLM input (allow usage of JSON or structured natural language instead of XML)
 
 Milestones planned for the future:
 - ollama support for local inference
