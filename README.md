@@ -44,11 +44,23 @@ A good setup might be to have a low-latency configuration for most reviews and a
 
 Tested with a simple commit with routine line changes (relevant as lots of diffs can induce certain models to allucinate).
 All of the models in this table can do basic code review, but only the more advanced can do high-quality reports.
+`x` symbols rappresent models that are not yet tested but are planned to be tested before the release of v1.0.0.
 
 | Model    | Time Spent | Cost | Reasoning | Basic Test | Repetition Test | Coding Rating (LiveBench) |
 |--|--|--|--|--|--|--|
+|`openai/gpt-oss-20b`| x | x | ❌ | x | x | <58.80 |
+|`openai/gpt-oss-120b`| x | x | ❌ | x | x | 58.80 |
+|`openai/gpt-oss-20b`| x | x | ✅ | x | x | <58.80 |
+|`openai/gpt-oss-120b`| x | x | ✅ | x | x | 58.80 |
+|`google/gemini-2.5-flash-lite`| x | x | ❌ | x | x | <59.25 |
+|`google/gemini-2.5-flash-lite`| x | x | ✅ | x | x | 59.25 |
+|`google/gemini-2.5-flash`| x | x | ✅ | x | x | 63.53 |
+|`openai/gpt-5-nano`| x | x | ✅ | x | x | 65.58 |
+|`openai/gpt-5-nano`| x | x | ❌ | x | x | 65.58 |
 |`openai/gpt-4o-mini`| 7s | 0,0003$ | ❌ | ✅ | ❌ | <69.29 |
 |`openai/gpt-4o`| 11s | 0,006$ | ❌ | ✅ | ❌ | 69.29 |
+|`openai/gpt-5-mini`| x | x | ❌ | x | x | 72.87 |
+|`openai/gpt-5-mini`| x | x | ✅ | x | x | 72.87 |
 |`deepseek/deepseek-r1`| 49s | 0,006$ | ✅ | ✅ | ✅ | 76.07 |
 |`deepseek/deepseek-r1:free`| 50s | 0$ | ✅ | ✅ | ✅ | 76.07 |
 
