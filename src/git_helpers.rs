@@ -5,6 +5,7 @@ use std::{collections::HashMap, env, fs, path::Path, path::PathBuf, str};
 /// Structure that allow to contain both the diff and the edited source file for commits or for staged edits
 #[derive(Clone, Debug)]
 pub struct ExpandedCommit {
+    //pub workdir: String,
     pub diffs: Option<Vec<String>>,
     pub sources: Option<Vec<PathBuf>>,
 }
@@ -26,16 +27,18 @@ impl ExpandedCommit {
     /// This operation should always be successful
     pub fn get_xml_structure(self, diff_profile: DiffProfile) -> String {
         let mut xml_string = String::new();
-        let sources = self.sources.unwrap();
+        // [review] I can unwrap because I can suppose that there are sources in order to generate a XML structure
+        let sources = self.sources.as_ref().ok_or("Sources are missing").unwrap();
 
         if diff_profile.report_diffs {
             let mut diff_counter: usize = 0;
-            let diffs = self.diffs.unwrap();
+            // [review] I can unwrap beacuse I can suppose that there are diffs in order to generate a XML structure
+            let diffs = self.diffs.as_ref().ok_or("Diffs are missing").unwrap();
             for diff_val in diffs {
                 // Open <diff NAME> tag
                 xml_string.push_str("<diff ");
-                let diff_source_path = sources[diff_counter].to_str().unwrap();
-                xml_string.push_str(diff_source_path);
+                let diff_source_path = sources[diff_counter].to_string_lossy();
+                xml_string.push_str(&diff_source_path);
                 xml_string.push_str(" >\n");
 
                 // Add diff
@@ -51,12 +54,14 @@ impl ExpandedCommit {
             for source_val in sources {
                 // Open <source NAME> tag
                 xml_string.push_str("<source ");
-                let source_path = source_val.to_str().unwrap();
-                xml_string.push_str(source_path);
+                // [review] Ignore this line, .to_string_lossy is the correct choice
+                let source_path = source_val.to_string_lossy();
+                xml_string.push_str(&source_path);
                 xml_string.push_str(" >\n");
 
                 // Add source
-                let source_text = fs::read_to_string(&source_val).unwrap();
+                let source_bytes = fs::read(&source_val).unwrap();
+                let source_text = String::from_utf8_lossy(&source_bytes).to_string();
                 xml_string.push_str(&source_text);
 
                 // Close </source> tag
