@@ -95,6 +95,11 @@ impl LLMProvider for OpenAIClient {
 
     fn stream_request_stdout(self, sys_prompt: String, review_prompt: String) {
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let _ = rt.block_on(self.stream_chat_to_terminal(&sys_prompt, &review_prompt));
+        let res = rt.block_on(self.stream_chat_to_terminal(&sys_prompt, &review_prompt));
+
+        match res {
+            Ok(_) => {},
+            Err(err) => println!("Failed request to LLM provider: {:?}", err),
+        }
     }
 }
