@@ -16,7 +16,7 @@ It works as a CLI tool easy to use and integrate in any kind of workflow and it 
 
 ### From crates.io
 
-Just run `cargo install rv-tool --version 1.0.0-rc2` in order to install the last version (the specified version is only needed on testing releases); then, follow the "From the source" guide from the third step.
+Just run `cargo install rv-tool --version 1.0.0-rc3` in order to install the last version (the specified version is only needed on testing releases); then, follow the "From the source" guide from the third step.
 
 ### From the source
 
@@ -28,6 +28,42 @@ Just run `cargo install rv-tool --version 1.0.0-rc2` in order to install the las
 
 NOTE: *rv* has been only tested on Linux; if possible try it on MacOS and Windows and open an issue with the results.
 
+## How to setup APIs
+
+We reccomend using [OpenRouter]() as it allows to use different models, connect to different APIs (such as Azure, Anthropic, Cloudflare, Google and Mistral), and access some free models.  
+Here are the links for [creating an account](https://openrouter.ai/), [managing API keys](https://openrouter.ai/settings/keys), [connecting other provider](https://openrouter.ai/settings/integrations) and [viewing all free models](https://openrouter.ai/models?max_price=0).  
+Once you have the API key, you can insert it in your configuration file (on Linux, `~/.config/rv/config.toml`).    
+
+## Note about models
+
+The current default model is `deepseek/deepseek-r1:free`, which provides great reasoning code reviews without having to pay.   
+If your usage surpasses the limits of the free tier consider using `deepseek/deepseek-r1` and if you need a low-latency alternative, try `openai/gpt-4o-mini`.    
+A good setup might be to have a low-latency configuration for most reviews and a reasoning configuration in case low-latency reviews are not enough for the current tasks; you can switch between different configurations using `-l`/`--llm`.
+
+### Benchmarks
+
+Tested with a simple commit with routine line changes (relevant as lots of diffs can induce certain models to allucinate).
+All of the models in this table can do basic code review, but only the more advanced can do high-quality reports.
+`x` symbols rappresent models that are not yet tested but are planned to be tested before the release of v1.0.0.
+
+| Model    | Time Spent | Cost | Reasoning | Basic Test | Repetition Test | Coding Rating (LiveBench) |
+|--|--|--|--|--|--|--|
+|`openai/gpt-oss-20b`| x | x | ❌ | x | x | <58.80 |
+|`openai/gpt-oss-120b`| x | x | ❌ | x | x | 58.80 |
+|`openai/gpt-oss-20b`| x | x | ✅ | x | x | <58.80 |
+|`openai/gpt-oss-120b`| x | x | ✅ | x | x | 58.80 |
+|`google/gemini-2.5-flash-lite`| x | x | ❌ | x | x | <59.25 |
+|`google/gemini-2.5-flash-lite`| x | x | ✅ | x | x | 59.25 |
+|`google/gemini-2.5-flash`| x | x | ✅ | x | x | 63.53 |
+|`openai/gpt-5-nano`| x | x | ✅ | x | x | 65.58 |
+|`openai/gpt-5-nano`| x | x | ❌ | x | x | 65.58 |
+|`openai/gpt-4o-mini`| 7s | 0,0003$ | ❌ | ✅ | ❌ | <69.29 |
+|`openai/gpt-4o`| 11s | 0,006$ | ❌ | ✅ | ❌ | 69.29 |
+|`openai/gpt-5-mini`| x | x | ❌ | x | x | 72.87 |
+|`openai/gpt-5-mini`| x | x | ✅ | x | x | 72.87 |
+|`deepseek/deepseek-r1`| 49s | 0,006$ | ✅ | ✅ | ✅ | 76.07 |
+|`deepseek/deepseek-r1:free`| 50s | 0$ | ✅ | ✅ | ✅ | 76.07 |
+
 ## Future work
 
 Milestones planned for the v1.0.0:
@@ -35,6 +71,7 @@ Milestones planned for the v1.0.0:
 - basic project context support (using README files, `.rv_context` and `.rv_guidelines`)
 - custom prompt support
 - raw mode support (selecting specific files or directory, skipping git integrations)
+- support for alternative structure data formats for LLM input (allow usage of JSON or structured natural language instead of XML)
 
 Milestones planned for the future:
 - ollama support for local inference
