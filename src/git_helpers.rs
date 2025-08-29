@@ -74,6 +74,7 @@ impl ExpandedCommit {
 }
 
 /// Get an ExpandedCommit rappresenting staged edits
+/// TODO: Update to using `diff_trees_to_expanded`
 pub fn staged_diffs(diff_profile: DiffProfile) -> Result<ExpandedCommit, git2::Error> {
     let repo = Repository::discover(".")?;
     let index = repo.index()?;
@@ -194,7 +195,6 @@ pub fn expanded_from_commit(repo: &Repository, oid: Oid) -> Result<ExpandedCommi
     } else {
         None
     };
-    // Note: we want Option<&Tree> for diff_tree_to_tree
     let old_tree_ref = old_tree.as_ref();
     let new_tree_ref = new_tree.as_ref();
     diff_trees_to_expanded(repo, old_tree_ref, new_tree_ref)
