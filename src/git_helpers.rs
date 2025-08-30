@@ -1,7 +1,13 @@
-use crate::config::{DiffProfile, BranchAgainst};
-use git2::{Error, Commit, BranchType, Oid, Tree, DiffFormat, DiffOptions, Repository};
+use crate::config::{BranchAgainst, DiffProfile};
 use git2::Object;
-use std::{collections::{BTreeSet, HashMap}, env, fs, path::Path, path::PathBuf, str};
+use git2::{BranchType, Commit, DiffFormat, DiffOptions, Error, Oid, Repository, Tree};
+use std::{
+    collections::{BTreeSet, HashMap},
+    env, fs,
+    path::Path,
+    path::PathBuf,
+    str,
+};
 
 /// Structure that allow to contain both the diff and the edited source file for commits or for staged edits
 #[derive(Clone, Debug)]
@@ -26,12 +32,11 @@ impl ExpandedCommit {
 
     pub fn is_empty(self) -> bool {
         // Sources must exist and have at least 1 element
-        if self.sources.is_some() {
-            if self.sources.unwrap().len() > 0 {
+        if self.sources.is_some()
+            && self.sources.unwrap().len() > 0 {
                 return true;
             }
-        }
-        return false;
+        false
     }
 
     /// Produce XML-like output useful for LLM prompting
@@ -53,7 +58,7 @@ impl ExpandedCommit {
                 xml_string.push_str(" >\n");
 
                 // Add diff
-                xml_string.push_str(&diff_val);
+                xml_string.push_str(diff_val);
 
                 // Close </diff> tag
                 xml_string.push_str("\n</diff>\n");
@@ -71,7 +76,7 @@ impl ExpandedCommit {
                 xml_string.push_str(" >\n");
 
                 // Add source
-                let source_bytes = fs::read(&source_val).unwrap();
+                let source_bytes = fs::read(source_val).unwrap();
                 let source_text = String::from_utf8_lossy(&source_bytes).to_string();
                 xml_string.push_str(&source_text);
 
@@ -162,7 +167,11 @@ fn diff_trees_to_expanded(
 
     diff.print(DiffFormat::Patch, |delta, _hunk, line| {
         // Determine the file path for this delta: prefer the new file path, else old file path
-        let maybe_path = delta.new_file().path().or(delta.old_file().path()).map(|p| p.to_path_buf());
+        let maybe_path = delta
+            .new_file()
+            .path()
+            .or(delta.old_file().path())
+            .map(|p| p.to_path_buf());
         // If the delta changed (a new file's patch started), flush the previous patch
         if last_file.as_ref() != maybe_path.as_ref() {
             if !current_patch.is_empty() {
@@ -191,8 +200,16 @@ fn diff_trees_to_expanded(
     }
 
     Ok(ExpandedCommit {
-        diffs: if patches.is_empty() { None } else { Some(patches) },
-        sources: if touched.is_empty() { None } else { Some(touched.into_iter().collect()) },
+        diffs: if patches.is_empty() {
+            None
+        } else {
+            Some(patches)
+        },
+        sources: if touched.is_empty() {
+            None
+        } else {
+            Some(touched.into_iter().collect())
+        },
     })
 }
 
@@ -248,9 +265,11 @@ pub fn expanded_from_branch(
                 let commit = branch.into_reference().peel_to_commit()?;
                 Some(commit)
             } else {
-                panic!("[ERR] Tried to compare against the main branch, but there are no branches named 'main' or 'master'.");
+                panic!(
+                    "[ERR] Tried to compare against the main branch, but there are no branches named 'main' or 'master'."
+                );
             }
-        },
+        }
     };
 
     // get trees (Option<&Tree>)

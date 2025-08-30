@@ -98,8 +98,8 @@ impl LLMProvider for OpenAIClient {
         let res = rt.block_on(self.stream_chat_to_terminal(&sys_prompt, &review_prompt));
 
         match res {
-            Ok(_) => {},
-            Err(err) => println!("Failed request to LLM provider: {:?}", err),
+            Ok(_) => {}
+            Err(err) => println!("Failed request to LLM provider: {err:?}"),
         }
     }
 }

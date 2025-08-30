@@ -1,9 +1,9 @@
+use crate::config::BranchAgainst;
 use crate::config::{ContextFile, RvConfig};
 use crate::git_helpers;
+use crate::git_helpers::ExpandedCommit;
 use crate::llm::{defs::LLMProvider, openai::OpenAIClient};
 use crate::term_helpers;
-use crate::config::BranchAgainst;
-use crate::git_helpers::ExpandedCommit;
 
 use std::path::PathBuf;
 use std::process;
@@ -90,10 +90,8 @@ const CUSTOM_GUIDELINES_INTRO: &str = r#"
 PROJECT GUIDELINES
 "#;
 
-pub fn search_context_files(
-  context_file: ContextFile
-) -> PathBuf {
-  todo!();
+pub fn search_context_files(context_file: ContextFile) -> PathBuf {
+    todo!();
 }
 
 pub fn raw_review(
@@ -141,14 +139,10 @@ pub fn git_review(
         }
         let branch_name: String = branch.unwrap();
 
-        let exp_result = git_helpers::expanded_from_branch(
-            &branch_name,
-            used_branch_mode,
-        );
+        let exp_result = git_helpers::expanded_from_branch(&branch_name, used_branch_mode);
         if exp_result.is_ok() {
             expcommit = Some(exp_result.unwrap());
         }
-
     } else if github_pr.is_some() {
         todo!("Github PR support");
     } else {
@@ -170,7 +164,6 @@ pub fn git_review(
             }
         }
     }
-
 
     if expcommit.is_some() {
         // Convert to structured format
@@ -206,9 +199,7 @@ pub fn git_review(
         // TODO Custom Prompt support
         openai_client.stream_request_stdout(SYSTEM_PROMPT.to_string(), review_prompt);
     } else {
-        println!(
-            "[ERROR] Git integrations failed. Are you running `rv` inside a Git repository?"
-        );
+        println!("[ERROR] Git integrations failed. Are you running `rv` inside a Git repository?");
         println!("      | [LOG] {expcommit:?}");
     }
 }

@@ -30,9 +30,7 @@ pub fn default_config_path() -> io::Result<PathBuf> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     } else {
-        return Err(io::Error::other(
-            "config path has no parent directory",
-        ));
+        return Err(io::Error::other("config path has no parent directory"));
     }
 
     Ok(path)
