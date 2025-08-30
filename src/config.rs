@@ -1,3 +1,4 @@
+use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{self, File};
@@ -73,6 +74,7 @@ pub struct RvConfig {
     pub diff_profile: DiffProfile,
     pub llm_configs: Vec<LLMConfig>,
     pub default_llm_config: String,
+    pub default_branch_mode: BranchAgainst,
 }
 
 // -----------------------------------
@@ -112,6 +114,7 @@ impl Default for RvConfig {
             diff_profile,
             llm_configs,
             default_llm_config: String::from("default"),
+            default_branch_mode: BranchAgainst::Main,
         }
     }
 }
@@ -172,8 +175,19 @@ impl OpenAIProvider {
     }
 }
 
+/// Enum to indicate a certain standard file used for providing extra context
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum ContextFile {
-  Readme,
-  RvContext,
-  RvGuidelines,
+    Readme,
+    RvContext,
+    RvGuidelines,
+}
+
+/// Enum to control what to compare a branch against
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, ValueEnum)]
+pub enum BranchAgainst {
+    /// Compare branch against the current HEAD
+    Current,
+    /// Compare branch against the repository's `main`
+    Main,
 }

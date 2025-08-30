@@ -16,11 +16,15 @@ struct Args {
 
     #[arg(short, long)]
     /// Git commit to review
-    commit: Option<String>, //TODO
+    commit: Option<String>,
 
     #[arg(short, long)]
     /// Git branch to review
-    branch: Option<String>, //TODO
+    branch: Option<String>,
+
+    #[arg(short, long, value_enum)]
+    /// Git branch review mode
+    branch_mode: Option<config::BranchAgainst>,
 
     #[arg(short, long)]
     /// Github pull request to review
@@ -70,6 +74,7 @@ fn main() {
                 args.llm,
                 args.commit,
                 args.branch,
+                args.branch_mode,
                 args.pr,
                 args.log_xml_structure,
             );

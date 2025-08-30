@@ -2,6 +2,8 @@ use crate::config::{ContextFile, RvConfig};
 use crate::git_helpers;
 use crate::llm::{defs::LLMProvider, openai::OpenAIClient};
 use crate::term_helpers;
+use crate::config::BranchAgainst;
+use crate::git_helpers::ExpandedCommit;
 
 use std::path::PathBuf;
 use std::process;
@@ -117,57 +119,96 @@ pub fn git_review(
     llm_selection: Option<String>,
     commit: Option<String>,
     branch: Option<String>,
+    branch_mode: Option<BranchAgainst>,
     github_pr: Option<String>,
     log_xml_structure: Option<bool>,
 ) {
+    let mut expcommit: Option<ExpandedCommit> = None;
+
     if commit.is_some() {
-        todo!("Git Commit support");
+        let commit_str = commit.unwrap();
+        // TODO Better error handling
+        let commit_oid = git_helpers::get_oid(&commit_str).unwrap();
+        let exp_result = git_helpers::expanded_from_commit(commit_oid);
+
+        if exp_result.is_ok() {
+            expcommit = Some(exp_result.unwrap());
+        }
     } else if branch.is_some() {
-        todo!("Git Branch support");
+        let mut used_branch_mode: BranchAgainst = rvconfig.default_branch_mode;
+        if branch_mode.is_some() {
+            used_branch_mode = branch_mode.unwrap();
+        }
+        let branch_name: String = branch.unwrap();
+
+        let exp_result = git_helpers::expanded_from_branch(
+            &branch_name,
+            used_branch_mode,
+        );
+        if exp_result.is_ok() {
+            expcommit = Some(exp_result.unwrap());
+        }
+
     } else if github_pr.is_some() {
         todo!("Github PR support");
     } else {
-        // Staging edits
-        let expcommit = git_helpers::staged_diffs(rvconfig.diff_profile);
+        // Staging edits, if empty HEAD commit
+        let exp_result = git_helpers::staged_diffs(rvconfig.diff_profile);
 
-        if expcommit.is_ok() {
-            // Convert to structured format
-            let review_prompt = expcommit.unwrap().get_xml_structure(rvconfig.diff_profile);
+        if exp_result.is_ok() {
+            let exp_unwrapped: ExpandedCommit = exp_result.unwrap();
 
-            term_helpers::clear_term();
-            if log_xml_structure.is_some() {
-                println!("{review_prompt}");
-                println!("  -------  ");
+            if exp_unwrapped.clone().is_empty() {
+                // HEAD commit
+                let exp_result = git_helpers::expanded_from_head();
+
+                if exp_result.is_ok() {
+                    expcommit = Some(exp_result.unwrap());
+                }
+            } else {
+                expcommit = Some(exp_unwrapped);
             }
-
-            // Select correct LLM configuration and setup OpenAIClient
-            let llm_configuration_default = rvconfig.clone().default_llm_config; // Normally `default`
-            let mut llm_configuration_key = llm_configuration_default;
-            let llm_configs = rvconfig.clone().get_llm_configs();
-            if llm_selection.is_some() {
-                llm_configuration_key = llm_selection.unwrap();
-            } else if !(llm_configs.contains_key(&llm_configuration_key.clone())) {
-                println!(
-                    "[ERROR] No LLM configuration specified or wrong configuration specified; either create a `default`-named configuration or use the --llm parameter to change the configuration used."
-                );
-                process::exit(1);
-            }
-            let llm_configuration = llm_configs.get(&llm_configuration_key.clone()).unwrap();
-
-            if llm_configuration.api_key == "[insert api key here]" {
-                println!("[ERROR] Insert compatible API key inside `~/.config/rv/config.toml`");
-                process::exit(1);
-            }
-
-            let openai_client = OpenAIClient::from_config(llm_configuration.clone());
-
-            // TODO Custom Prompt support
-            openai_client.stream_request_stdout(SYSTEM_PROMPT.to_string(), review_prompt);
-        } else {
-            println!(
-                "[ERROR] Git integrations failed. Are you running `rv` inside a Git repository?"
-            );
-            println!("      | [LOG] {expcommit:?}");
         }
+    }
+
+
+    if expcommit.is_some() {
+        // Convert to structured format
+        let review_prompt = expcommit.unwrap().get_xml_structure(rvconfig.diff_profile);
+
+        term_helpers::clear_term();
+        if log_xml_structure.is_some() {
+            println!("{review_prompt}");
+            println!("  -------  ");
+        }
+
+        // Select correct LLM configuration and setup OpenAIClient
+        let llm_configuration_default = rvconfig.clone().default_llm_config; // Normally `default`
+        let mut llm_configuration_key = llm_configuration_default;
+        let llm_configs = rvconfig.clone().get_llm_configs();
+        if llm_selection.is_some() {
+            llm_configuration_key = llm_selection.unwrap();
+        } else if !(llm_configs.contains_key(&llm_configuration_key.clone())) {
+            println!(
+                "[ERROR] No LLM configuration specified or wrong configuration specified; either create a `default`-named configuration or use the --llm parameter to change the configuration used."
+            );
+            process::exit(1);
+        }
+        let llm_configuration = llm_configs.get(&llm_configuration_key.clone()).unwrap();
+
+        if llm_configuration.api_key == "[insert api key here]" {
+            println!("[ERROR] Insert compatible API key inside `~/.config/rv/config.toml`");
+            process::exit(1);
+        }
+
+        let openai_client = OpenAIClient::from_config(llm_configuration.clone());
+
+        // TODO Custom Prompt support
+        openai_client.stream_request_stdout(SYSTEM_PROMPT.to_string(), review_prompt);
+    } else {
+        println!(
+            "[ERROR] Git integrations failed. Are you running `rv` inside a Git repository?"
+        );
+        println!("      | [LOG] {expcommit:?}");
     }
 }

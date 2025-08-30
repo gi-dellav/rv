@@ -1,5 +1,6 @@
-use crate::config::DiffProfile;
+use crate::config::{DiffProfile, BranchAgainst};
 use git2::{Error, Commit, BranchType, Oid, Tree, DiffFormat, DiffOptions, Repository};
+use git2::Object;
 use std::{collections::{BTreeSet, HashMap}, env, fs, path::Path, path::PathBuf, str};
 
 /// Structure that allow to contain both the diff and the edited source file for commits or for staged edits
@@ -21,6 +22,16 @@ impl ExpandedCommit {
             diffs: None,
             sources: None,
         }
+    }
+
+    pub fn is_empty(self) -> bool {
+        // Sources must exist and have at least 1 element
+        if self.sources.is_some() {
+            if self.sources.unwrap().len() > 0 {
+                return true;
+            }
+        }
+        return false;
     }
 
     /// Produce XML-like output useful for LLM prompting
@@ -186,7 +197,8 @@ fn diff_trees_to_expanded(
 }
 
 /// Build an ExpandedCommit for a given commit OID.
-pub fn expanded_from_commit(repo: &Repository, oid: Oid) -> Result<ExpandedCommit, git2::Error> {
+pub fn expanded_from_commit(oid: Oid) -> Result<ExpandedCommit, git2::Error> {
+    let repo = Repository::discover(".")?;
     let commit = repo.find_commit(oid)?;
     let new_tree = commit.tree().ok();
     // parent tree (if any)
@@ -197,47 +209,26 @@ pub fn expanded_from_commit(repo: &Repository, oid: Oid) -> Result<ExpandedCommi
     };
     let old_tree_ref = old_tree.as_ref();
     let new_tree_ref = new_tree.as_ref();
-    diff_trees_to_expanded(repo, old_tree_ref, new_tree_ref)
+    diff_trees_to_expanded(&repo, old_tree_ref, new_tree_ref)
 }
 
 /// Build an ExpandedCommit for HEAD (last commit on current branch).
-pub fn expanded_from_head(repo: &Repository) -> Result<ExpandedCommit, git2::Error> {
+pub fn expanded_from_head() -> Result<ExpandedCommit, git2::Error> {
+    let repo = Repository::discover(".")?;
     let head_ref = repo.head()?;
     let head_commit = head_ref.peel_to_commit()?;
-    expanded_from_commit(repo, head_commit.id())
-}
-
-/// Enum to control what to compare a branch against
-pub enum BranchAgainst {
-    /// Compare branch against the current HEAD
-    Current,
-    /// Compare branch against the repository's `main`
-    Main,
-}
-
-/// Try to find the `main` branch commit; fall back to `master` if `main` is not present.
-fn find_main_commit(repo: &Repository) -> Result<Commit, git2::Error> {
-    // Try "refs/heads/main", then "refs/heads/master"
-    if let Ok(branch) = repo.find_branch("main", BranchType::Local) {
-        let commit = branch.into_reference().peel_to_commit()?;
-        return Ok(commit);
-    }
-    if let Ok(branch) = repo.find_branch("master", BranchType::Local) {
-        let commit = branch.into_reference().peel_to_commit()?;
-        return Ok(commit);
-    }
-    // Not found: return an error from repo.head() to provide a git2::Error
-    Err(Error::from_str("no 'main' or 'master' branch found"))
+    expanded_from_commit(head_commit.id())
 }
 
 /// Compare the tip of `branch_name` against either the current HEAD or `main`/`master`.
 /// Returns the diff between `base` (the `against` target) and the branch tip:
 /// i.e., diff(base_tree, branch_tree) so the produced patches reflect changes from base -> branch.
-pub fn expanded_from_branch_against(
-    repo: &Repository,
+pub fn expanded_from_branch(
     branch_name: &str,
     against: BranchAgainst,
 ) -> Result<ExpandedCommit, git2::Error> {
+    let search_repo = Repository::discover(".")?;
+    let repo = Repository::discover(".")?;
     // Find branch commit
     let branch = repo.find_branch(branch_name, BranchType::Local)?;
     let branch_commit = branch.into_reference().peel_to_commit()?;
@@ -249,7 +240,17 @@ pub fn expanded_from_branch_against(
             let head_ref = repo.head()?;
             Some(head_ref.peel_to_commit()?)
         }
-        BranchAgainst::Main => Some(find_main_commit(repo)?),
+        BranchAgainst::Main => {
+            if let Ok(branch) = search_repo.find_branch("main", BranchType::Local) {
+                let commit = branch.into_reference().peel_to_commit()?;
+                Some(commit)
+            } else if let Ok(branch) = search_repo.find_branch("master", BranchType::Local) {
+                let commit = branch.into_reference().peel_to_commit()?;
+                Some(commit)
+            } else {
+                panic!("[ERR] Tried to compare against the main branch, but there are no branches named 'main' or 'master'.");
+            }
+        },
     };
 
     // get trees (Option<&Tree>)
@@ -259,5 +260,26 @@ pub fn expanded_from_branch_against(
     let old_tree_ref = old_tree.as_ref();
     let new_tree_ref = new_tree.as_ref();
 
-    diff_trees_to_expanded(repo, old_tree_ref, new_tree_ref)
+    diff_trees_to_expanded(&repo, old_tree_ref, new_tree_ref)
+}
+
+pub fn get_oid(rev: &str) -> Result<Oid, Error> {
+    let repo = Repository::discover(".")?;
+    // If the input parses as an Oid, try that first (fast path).
+    if let Ok(oid) = Oid::from_str(rev) {
+        if let Ok(obj) = repo.find_object(oid, None) {
+            // If the object (or what it points to) is a commit, return its id.
+            if let Ok(commit) = obj.peel_to_commit() {
+                return Ok(commit.id());
+            }
+            // If the parsed OID is not a commit, fall through to rev-parse fallback.
+        } else {
+            // If find_object failed for this OID, fallthrough to revparse (covers packed/loose mismatch).
+        }
+    }
+
+    // Fallback: rev-parse (handles short hashes, refs, HEAD~, tags, etc.)
+    let obj: Object = repo.revparse_single(rev)?;
+    let commit = obj.peel_to_commit()?;
+    Ok(commit.id())
 }
