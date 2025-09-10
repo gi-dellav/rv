@@ -42,16 +42,6 @@ pub struct DiffProfile {
     pub report_sources: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone, Copy)]
-pub enum CustomPromptMode {
-    #[default]
-    None,
-
-    Replace,
-    Suffix,
-    Prefix,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 /// LLM provider specific configuration
 pub struct LLMConfig {
@@ -60,9 +50,9 @@ pub struct LLMConfig {
     pub model_id: String,
     pub api_key: String,
 
+    // TODO: Implement optional reasioning
     pub allow_reasoning: bool,
 
-    pub custom_prompt_mode: CustomPromptMode,
     pub custom_prompt: Option<String>,
 }
 
@@ -73,6 +63,9 @@ pub struct RvConfig {
     pub llm_configs: Vec<LLMConfig>,
     pub default_llm_config: String,
     pub default_branch_mode: BranchAgainst,
+    pub load_readme: bool,
+    pub load_rv_context: bool,
+    pub load_rv_guidelines: bool,
 }
 
 // -----------------------------------
@@ -113,6 +106,9 @@ impl Default for RvConfig {
             llm_configs,
             default_llm_config: String::from("default"),
             default_branch_mode: BranchAgainst::Main,
+            load_readme: true,
+            load_rv_context: true,
+            load_rv_guidelines: true,
         }
     }
 }
