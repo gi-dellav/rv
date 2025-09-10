@@ -5,6 +5,8 @@ use crate::git_helpers::ExpandedCommit;
 use crate::llm::{defs::LLMProvider, openai::OpenAIClient};
 use crate::term_helpers;
 
+use anyhow::{Result, Context};
+
 use std::path::PathBuf;
 use std::process;
 
@@ -120,19 +122,19 @@ pub fn git_review(
     branch_mode: Option<BranchAgainst>,
     github_pr: Option<String>,
     log_xml_structure: Option<bool>,
-) {
+) -> Result<()> {
     let mut expcommit: Option<ExpandedCommit> = None;
 
     if commit.is_some() {
         let commit_str = commit.unwrap();
         // TODO Better error handling
-        let commit_oid = git_helpers::get_oid(&commit_str).unwrap();
+        let commit_oid = git_helpers::get_oid(&commit_str).context("Failed to get commit OID")?;
         let exp_result = git_helpers::expanded_from_commit(commit_oid);
 
         if exp_result.is_ok() {
             expcommit = Some(exp_result.unwrap());
         }
-    } else if branch.is_some() {
+      } else if branch.is_some() {
         let mut used_branch_mode: BranchAgainst = rvconfig.default_branch_mode;
         if branch_mode.is_some() {
             used_branch_mode = branch_mode.unwrap();
@@ -147,20 +149,34 @@ pub fn git_review(
         todo!("Github PR support");
     } else {
         // Staging edits, if empty HEAD commit
-        let exp_result = git_helpers::staged_diffs(rvconfig.diff_profile);
+        let mut exp_result = git_helpers::staged_diffs(rvconfig.diff_profile);
 
         if exp_result.is_ok() {
-            let exp_unwrapped: ExpandedCommit = exp_result.unwrap();
+            let mut exp_unwrapped: ExpandedCommit = exp_result.unwrap();
 
             if exp_unwrapped.clone().is_empty() {
-                // HEAD commit
-                let exp_result = git_helpers::expanded_from_head();
+                println!("Staged is empty, switching to HEAD");
+                let commit_str = "HEAD";
+                // TODO Better error handling
+                let commit_oid = git_helpers::get_oid(&commit_str).context("Failed to get commit OID")?;
+                exp_result = git_helpers::expanded_from_commit(commit_oid);
 
                 if exp_result.is_ok() {
                     expcommit = Some(exp_result.unwrap());
                 }
             } else {
                 expcommit = Some(exp_unwrapped);
+            }
+        } else {
+            // HEAD commit
+            println!("Staged is empty, switching to HEAD");
+            let commit_str = "HEAD";
+            // TODO Better error handling
+            let commit_oid = git_helpers::get_oid(&commit_str).context("Failed to get commit OID")?;
+            exp_result = git_helpers::expanded_from_commit(commit_oid);
+
+            if exp_result.is_ok() {
+                expcommit = Some(exp_result.unwrap());
             }
         }
     }
@@ -187,7 +203,7 @@ pub fn git_review(
             );
             process::exit(1);
         }
-        let llm_configuration = llm_configs.get(&llm_configuration_key.clone()).unwrap();
+        let llm_configuration = llm_configs.get(&llm_configuration_key.clone()).context("Failed to load selected LLM configuration")?;
 
         if llm_configuration.api_key == "[insert api key here]" {
             println!("[ERROR] Insert compatible API key inside `~/.config/rv/config.toml`");
@@ -202,4 +218,6 @@ pub fn git_review(
         println!("[ERROR] Git integrations failed. Are you running `rv` inside a Git repository?");
         println!("      | [LOG] {expcommit:?}");
     }
+
+    Ok(())
 }
