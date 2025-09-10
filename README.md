@@ -56,7 +56,6 @@ All of the models in this table can do basic code review, but only the more adva
 ## Future work
 
 Milestones planned for the v1.0.0:
-- full git support (not only staged edits, but also commits, branches and PRs)
 - basic project context support (using README files, `.rv_context` and `.rv_guidelines`)
 - custom prompt support
 - raw mode support (selecting specific files or directory, skipping git integrations)
