@@ -34,9 +34,9 @@ impl ExpandedCommit {
         // Sources must exist and have at least 1 element
         if self.sources.is_some()
             && self.sources.unwrap().len() > 0 {
-                return true;
+                return false;
             }
-        false
+        return true;
     }
 
     /// Produce XML-like output useful for LLM prompting
