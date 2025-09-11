@@ -68,3 +68,7 @@ Milestones planned for the future:
 - *fix mode* for producing and applying fixes from the code review using LLMs
 - full project context support (indexed references to other code or text files, full project reviews for better security and architectural reports)
 - support for alternative structure data formats for LLM input (allow usage of JSON or structured natural language instead of XML)
+
+
+## Star History
+[![Star History Chart](https://api.star-history.com/svg?repos=gi-dellav/rv&type=Date)](https://www.star-history.com/#gi-dellav/rv&Date)
