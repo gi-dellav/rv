@@ -77,22 +77,28 @@ a=10
 The code doesn't have any issues.
 ```
 
+-------
+
+{{custom_prompt}}
+{{custom_guidelines}}
 
 INPUT
 - After this prompt I will provided an input formatted using:
     <diff FILE>   - tag used for submitting the diffs of a file
     <source FILE> - tag used for submitting the content of a file
-    <info>        - tag used for additional info
+    <info TYPE>   - tag used for additional info; can be of type README or CONTEXT
 - Review this input.
 
 --------
 "#;
 const CUSTOM_GUIDELINES_INTRO: &str = r#"
-
 PROJECT GUIDELINES
 "#;
 
-pub fn search_context_files(context_file: ContextFile) -> PathBuf {
+pub fn read_context_files(context_file: String) -> String {
+    todo!();
+}
+pub fn pack_prompt_with_context(rvconfig: RvConfig) -> String {
     todo!();
 }
 

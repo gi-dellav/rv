@@ -89,7 +89,6 @@ impl Default for LLMConfig {
             model_id: String::from("deepseek/deepseek-r1:free"),
             api_key: String::from("[insert api key here]"),
             allow_reasoning: true,
-            custom_prompt_mode: CustomPromptMode::None,
             custom_prompt: None,
         }
     }
