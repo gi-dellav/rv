@@ -95,11 +95,53 @@ const CUSTOM_GUIDELINES_INTRO: &str = r#"
 PROJECT GUIDELINES
 "#;
 
-pub fn read_context_files(context_file: String) -> String {
-    todo!();
+fn read_context_files(context_file: ContextFile) -> Result<String, std::io::Error> {
+    let filename = match context_file {
+        ContextFile::Readme => "README.md",
+        ContextFile::RvContext => ".rv_context",
+        ContextFile::RvGuidelines => ".rv_guidelines",
+    };
+    
+    match std::fs::read_to_string(filename) {
+        Ok(content) => Ok(content),
+        Err(e) => {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                Ok(String::new()) // Return empty string if file doesn't exist
+            } else {
+                Err(e)
+            }
+        }
+    }
 }
-pub fn pack_prompt_with_context(rvconfig: RvConfig) -> String {
-    todo!();
+pub fn pack_prompt_with_context(rvconfig: &RvConfig) -> String {
+    let mut system_prompt = SYSTEM_PROMPT.to_string();
+    
+    // Handle custom guidelines
+    let mut guidelines_content = String::new();
+    if rvconfig.load_rv_guidelines {
+        match read_context_files(ContextFile::RvGuidelines) {
+            Ok(content) if !content.trim().is_empty() => {
+                guidelines_content.push_str(&CUSTOM_GUIDELINES_INTRO);
+                guidelines_content.push_str(&content);
+            }
+            _ => {}
+        }
+    }
+    system_prompt = system_prompt.replace("{{custom_guidelines}}", &guidelines_content);
+    
+    // Handle custom prompt
+    let mut custom_prompt_content = String::new();
+    if rvconfig.load_rv_context {
+        match read_context_files(ContextFile::RvContext) {
+            Ok(content) if !content.trim().is_empty() => {
+                custom_prompt_content.push_str(&content);
+            }
+            _ => {}
+        }
+    }
+    system_prompt = system_prompt.replace("{{custom_prompt}}", &custom_prompt_content);
+    
+    system_prompt
 }
 
 pub fn raw_review(
@@ -226,8 +268,23 @@ pub fn git_review(
 
         let openai_client = OpenAIClient::from_config(llm_configuration.clone());
 
-        // TODO Custom Prompt support
-        openai_client.stream_request_stdout(SYSTEM_PROMPT.to_string(), review_prompt);
+        // Build system prompt with context
+        let system_prompt = pack_prompt_with_context(&rvconfig);
+        
+        // Add README to the review prompt if configured
+        let mut enhanced_review_prompt = review_prompt;
+        if rvconfig.load_readme {
+            match read_context_files(ContextFile::Readme) {
+                Ok(readme_content) if !readme_content.trim().is_empty() => {
+                    enhanced_review_prompt.push_str("\n<info README>\n");
+                    enhanced_review_prompt.push_str(&readme_content);
+                    enhanced_review_prompt.push_str("\n</info>\n");
+                }
+                _ => {}
+            }
+        }
+        
+        openai_client.stream_request_stdout(system_prompt, enhanced_review_prompt);
     } else {
         println!("[ERROR] Git integrations failed. Are you running `rv` inside a Git repository?");
         println!("      | [LOG] {expcommit:?}");
