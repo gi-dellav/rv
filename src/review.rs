@@ -7,7 +7,7 @@ use crate::term_helpers;
 
 use anyhow::{Result, Context};
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process;
 
 const SYSTEM_PROMPT: &str = r#"
@@ -354,7 +354,7 @@ pub fn git_review(
         let mut exp_result = git_helpers::staged_diffs(rvconfig.diff_profile);
 
         if exp_result.is_ok() {
-            let mut exp_unwrapped: ExpandedCommit = exp_result.unwrap();
+            let exp_unwrapped: ExpandedCommit = exp_result.unwrap();
 
             if exp_unwrapped.clone().is_empty() {
                 println!("Staged is empty, switching to HEAD");
