@@ -211,9 +211,17 @@ pub fn git_review(
         }
         let llm_configuration = llm_configs.get(&llm_configuration_key.clone()).context("Failed to load selected LLM configuration")?;
 
-        if llm_configuration.api_key == "[insert api key here]" {
-            println!("[ERROR] Insert compatible API key inside `~/.config/rv/config.toml`");
-            process::exit(1);
+        // Check if the API key is the placeholder or empty, and if it's OpenRouter, check for environment variable
+        if llm_configuration.api_key == "[insert api key here]" || llm_configuration.api_key.is_empty() {
+            if matches!(llm_configuration.provider, crate::config::OpenAIProvider::OpenRouter) {
+                if std::env::var("OPENROUTER_API_KEY").is_err() {
+                    println!("[ERROR] Insert compatible API key inside `~/.config/rv/config.toml` or set OPENROUTER_API_KEY environment variable");
+                    process::exit(1);
+                }
+            } else {
+                println!("[ERROR] Insert compatible API key inside `~/.config/rv/config.toml`");
+                process::exit(1);
+            }
         }
 
         let openai_client = OpenAIClient::from_config(llm_configuration.clone());

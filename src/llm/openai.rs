@@ -31,8 +31,15 @@ impl OpenAIClient {
         sys_prompt: &str,
         review_prompt: &str,
     ) -> Result<String> {
+        // Check for OPENROUTER_API_KEY environment variable if provider is OpenRouter
+        let api_key = if matches!(self.provider, OpenAIProvider::OpenRouter) {
+            std::env::var("OPENROUTER_API_KEY").unwrap_or(self.api_key)
+        } else {
+            self.api_key
+        };
+        
         let config = async_openai::config::OpenAIConfig::new()
-            .with_api_key(self.api_key)
+            .with_api_key(api_key)
             .with_api_base(self.provider.get_endpoint());
         let client = Client::with_config(config);
 
