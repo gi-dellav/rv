@@ -59,16 +59,16 @@ Milestones planned for the v1.0.0:
 - basic project context support (using README files, `.rv_context` and `.rv_guidelines`)
 - custom prompt support
 - raw mode support (selecting specific files or directory, skipping git integrations)
+- support for environment variables
 
 Milestones planned for the future:
+- *text mode* for reviewing content and style of natural language documents, with support for TXT, MarkDown, LaTex (other formats as read-only).
+- *chat tool* for turning the review into a chatbot-like assistant
+- *actions tool* for executing common git commands with one keystroke
+- *fix tool* for producing and applying fixes directly from the review
 - ollama support for local inference
 - custom OpenAPI support
-- *chat mode* for turning rv into a chatbot-like assistant
-- *actions mode* for executing common git commands with one keystroke
-- *fix mode* for producing and applying fixes from the code review using LLMs
 - full project context support (indexed references to other code or text files, full project reviews for better security and architectural reports)
-- support for alternative structure data formats for LLM input (allow usage of JSON or structured natural language instead of XML)
-
 
 ## Star History
 [![Star History Chart](https://api.star-history.com/svg?repos=gi-dellav/rv&type=Date)](https://www.star-history.com/#gi-dellav/rv&Date)
