@@ -1,7 +1,7 @@
 # rv
 **rv** is a non-invasive AI code review for any type of workflow.
 
-It works as a CLI tool easy to use and integrate in any kind of workflow and it allows to review the code that you are currently writing or code written by other developers on your project by extracting relevant information from your codebase and processing this data using LLMs.
+It works as a CLI tool easy to use and integrate, allowing to review the code that you are currently writing or code from other commits, branches or pull requests.
 
 ## Features
 
