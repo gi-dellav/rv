@@ -83,7 +83,7 @@ impl OpenAIClient {
         let pb_clone = pb.clone();
         
         // Spawn a thread to tick the progress bar until the first token arrives
-        let _progress_thread = std::thread::spawn(move || {
+        let progress_thread_handle = std::thread::spawn(move || {
             while !started_clone.load(Ordering::Relaxed) {
                 pb_clone.tick();
                 std::thread::sleep(Duration::from_millis(100));
@@ -91,38 +91,49 @@ impl OpenAIClient {
             pb_clone.finish_and_clear();
         });
 
-        // Pull chunks from the stream
-        while let Some(item) = stream.next().await {
-            // Mark that we've started receiving tokens
-            if !started.load(Ordering::Relaxed) {
-                started.store(true, Ordering::Relaxed);
-            }
-            
-            // item is Result<CreateChatCompletionStreamResponse, OpenAIError>
-            let chunk = item?; // propagate errors via anyhow
+        // Use a scope to ensure the progress bar is always cleared
+        let result = async {
+            while let Some(item) = stream.next().await {
+                // Mark that we've started receiving tokens
+                if !started.load(Ordering::Relaxed) {
+                    started.store(true, Ordering::Relaxed);
+                }
+                
+                // Handle potential errors from the stream
+                let chunk = match item {
+                    Ok(chunk) => chunk,
+                    Err(err) => {
+                        // Ensure progress bar is cleared on error
+                        if !started.load(Ordering::Relaxed) {
+                            started.store(true, Ordering::Relaxed);
+                        }
+                        return Err(err.into());
+                    }
+                };
 
-            for choice in chunk.choices {
-                if let Some(text) = choice.delta.content {
-                    print!("{text}");
-                    out.flush()?;
-
-                    full_text.push_str(&text);
+                for choice in chunk.choices {
+                    if let Some(text) = choice.delta.content {
+                        print!("{text}");
+                        out.flush()?;
+                        full_text.push_str(&text);
+                    }
                 }
             }
-        }
+            Ok(full_text)
+        }.await;
 
-        // Ensure progress bar is cleared even if no tokens were received
+        // Ensure progress bar is cleared even if no tokens were received or an error occurred
         if !started.load(Ordering::Relaxed) {
             started.store(true, Ordering::Relaxed);
         }
         
-        // Wait a bit to ensure the progress thread sees the change
-        std::thread::sleep(Duration::from_millis(200));
+        // Wait for the progress thread to finish
+        let _ = progress_thread_handle.join();
         
-        // newline after stream finishes
+        // Add a newline after stream finishes
         println!();
 
-        Ok(full_text)
+        result
     }
 }
 
