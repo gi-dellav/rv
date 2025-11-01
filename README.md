@@ -5,7 +5,7 @@ It works as a CLI tool easy to use and integrate, allowing to review the code th
 
 ## Features
 
-- **Unix philosophy** <br> *rv* follows the Unix philosophy by providing one minimalstic tool (<1k LoC) that does one thing (code review) well.
+- **Unix philosophy** <br> *rv* follows the Unix philosophy by providing one minimalstic tool (~1k LoC) that does one thing (code review) well.
 - **Cheap and low-latency** <br> *rv* is optimized to use cheap and low-latency models in order to allow for reviews that takes less than 10 seconds and cost about $0.001 (on average, tested with gpt-4o-mini)
 - **Deterministic** <br> *rv* uses deterministic sampling (LLM's temperature set to 0 and other parameters tweaked) in order to avoid anomalies in the output. <br> NOTE: Beacuse of issues like token tie-breaking or non-deterministic floating point operations on GPUs, results might not be fully deterministic; we plan on implementing seed support on supported providers in order to allow for fully deterministic prompting
 - **Fully customizable** <br> *rv* is designed to give full freedom with its configuration file, allowing for different providers, LLMs and prompts
@@ -56,10 +56,7 @@ All of the models in this table can do basic code review, but only the more adva
 ## Future work
 
 Milestones planned for the v1.0.0:
-- basic project context support (using README files, `.rv_context` and `.rv_guidelines`)
 - custom prompt support
-- raw mode support (selecting specific files or directory, skipping git integrations)
-- support for environment variables
 
 Milestones planned for the future:
 - *text mode* for reviewing content and style of natural language documents, with support for TXT, MarkDown, LaTex (other formats as read-only).

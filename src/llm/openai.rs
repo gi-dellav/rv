@@ -94,33 +94,39 @@ impl OpenAIClient {
 
         // Use a scope to ensure the progress bar is always cleared
         let result = async {
-            while let Some(item) = stream.next().await {
-                // Mark that we've started receiving tokens - stop the progress bar
-                if !should_stop.load(Ordering::Relaxed) {
-                    should_stop.store(true, Ordering::Relaxed);
-                }
-                
-                // Handle potential errors from the stream
-                let chunk = match item {
-                    Ok(chunk) => chunk,
-                    Err(err) => {
-                        return Err(err.into());
+            let res = async {
+                while let Some(item) = stream.next().await {
+                    // Mark that we've started receiving tokens - stop the progress bar
+                    if !should_stop.load(Ordering::Relaxed) {
+                        should_stop.store(true, Ordering::Relaxed);
                     }
-                };
+                    
+                    // Handle potential errors from the stream
+                    let chunk = match item {
+                        Ok(chunk) => chunk,
+                        Err(err) => {
+                            // Signal to stop the progress bar before returning error
+                            should_stop.store(true, Ordering::Relaxed);
+                            return Err(err.into());
+                        }
+                    };
 
-                for choice in chunk.choices {
-                    if let Some(text) = choice.delta.content {
-                        print!("{text}");
-                        out.flush()?;
-                        full_text.push_str(&text);
+                    for choice in chunk.choices {
+                        if let Some(text) = choice.delta.content {
+                            print!("{text}");
+                            out.flush()?;
+                            full_text.push_str(&text);
+                        }
                     }
                 }
-            }
-            Ok(full_text)
+                Ok(full_text)
+            }.await;
+            
+            // Ensure progress bar is stopped
+            should_stop.store(true, Ordering::Relaxed);
+            res
         }.await;
 
-        should_stop.store(true, Ordering::Relaxed);
-        
         // Wait for the progress thread to finish
         let _ = progress_thread_handle.join();
         
