@@ -78,6 +78,7 @@ impl OpenAIClient {
         );
         
         // Start the progress bar
+        // Start the progress bar
         let should_stop = Arc::new(AtomicBool::new(false));
         let should_stop_clone = should_stop.clone();
         let pb_clone = pb.clone();
@@ -118,7 +119,6 @@ impl OpenAIClient {
             Ok(full_text)
         }.await;
 
-        // Signal the progress thread to stop
         should_stop.store(true, Ordering::Relaxed);
         
         // Wait for the progress thread to finish
