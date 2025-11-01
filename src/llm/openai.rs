@@ -9,7 +9,11 @@ use async_openai::{
     },
 };
 use futures::StreamExt;
+use indicatif::{ProgressBar, ProgressStyle};
 use std::io::{Write, stdout};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
 
 pub struct OpenAIClient {
     pub provider: OpenAIProvider,
@@ -63,9 +67,37 @@ impl OpenAIClient {
 
         let mut out = stdout();
         let mut full_text = String::new();
+        
+        // Create a progress bar
+        let pb = ProgressBar::new_spinner();
+        pb.set_message("Reasoning...");
+        pb.set_style(
+            ProgressStyle::default_spinner()
+                .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
+                .template("{spinner} {msg}").unwrap()
+        );
+        
+        // Start the progress bar
+        let started = Arc::new(AtomicBool::new(false));
+        let started_clone = started.clone();
+        let pb_clone = pb.clone();
+        
+        // Spawn a thread to tick the progress bar until the first token arrives
+        let _progress_thread = std::thread::spawn(move || {
+            while !started_clone.load(Ordering::Relaxed) {
+                pb_clone.tick();
+                std::thread::sleep(Duration::from_millis(100));
+            }
+            pb_clone.finish_and_clear();
+        });
 
         // Pull chunks from the stream
         while let Some(item) = stream.next().await {
+            // Mark that we've started receiving tokens
+            if !started.load(Ordering::Relaxed) {
+                started.store(true, Ordering::Relaxed);
+            }
+            
             // item is Result<CreateChatCompletionStreamResponse, OpenAIError>
             let chunk = item?; // propagate errors via anyhow
 
@@ -79,6 +111,14 @@ impl OpenAIClient {
             }
         }
 
+        // Ensure progress bar is cleared even if no tokens were received
+        if !started.load(Ordering::Relaxed) {
+            started.store(true, Ordering::Relaxed);
+        }
+        
+        // Wait a bit to ensure the progress thread sees the change
+        std::thread::sleep(Duration::from_millis(200));
+        
         // newline after stream finishes
         println!();
 
