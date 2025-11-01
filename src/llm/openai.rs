@@ -78,35 +78,31 @@ impl OpenAIClient {
         );
         
         // Start the progress bar
-        let started = Arc::new(AtomicBool::new(false));
-        let started_clone = started.clone();
+        let should_stop = Arc::new(AtomicBool::new(false));
+        let should_stop_clone = should_stop.clone();
         let pb_clone = pb.clone();
         
-        // Spawn a thread to tick the progress bar until the first token arrives
+        // Spawn a thread to tick the progress bar until we stop it
         let progress_thread_handle = std::thread::spawn(move || {
-            while !started_clone.load(Ordering::Relaxed) {
+            while !should_stop_clone.load(Ordering::Relaxed) {
                 pb_clone.tick();
                 std::thread::sleep(Duration::from_millis(100));
-            }
-            pb_clone.finish_and_clear();
+        }
+        pb_clone.finish_and_clear();
         });
 
         // Use a scope to ensure the progress bar is always cleared
         let result = async {
             while let Some(item) = stream.next().await {
-                // Mark that we've started receiving tokens
-                if !started.load(Ordering::Relaxed) {
-                    started.store(true, Ordering::Relaxed);
+                // Mark that we've started receiving tokens - stop the progress bar
+                if !should_stop.load(Ordering::Relaxed) {
+                    should_stop.store(true, Ordering::Relaxed);
                 }
                 
                 // Handle potential errors from the stream
                 let chunk = match item {
                     Ok(chunk) => chunk,
                     Err(err) => {
-                        // Ensure progress bar is cleared on error
-                        if !started.load(Ordering::Relaxed) {
-                            started.store(true, Ordering::Relaxed);
-                        }
                         return Err(err.into());
                     }
                 };
@@ -122,10 +118,8 @@ impl OpenAIClient {
             Ok(full_text)
         }.await;
 
-        // Ensure progress bar is cleared even if no tokens were received or an error occurred
-        if !started.load(Ordering::Relaxed) {
-            started.store(true, Ordering::Relaxed);
-        }
+        // Signal the progress thread to stop
+        should_stop.store(true, Ordering::Relaxed);
         
         // Wait for the progress thread to finish
         let _ = progress_thread_handle.join();
