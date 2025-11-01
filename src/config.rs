@@ -37,9 +37,16 @@ pub fn default_config_path() -> io::Result<PathBuf> {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+/// How the LLM context gets produced
 pub struct DiffProfile {
     pub report_diffs: bool,
     pub report_sources: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum CustomPrompt {
+    Suffix(String),
+    Replace(String),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -53,7 +60,7 @@ pub struct LLMConfig {
     // TODO: Implement optional reasioning
     pub allow_reasoning: bool,
 
-    pub custom_prompt: Option<String>,
+    pub custom_prompt: Option<CustomPrompt>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
