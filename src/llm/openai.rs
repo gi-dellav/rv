@@ -1,6 +1,6 @@
 use crate::config::{LLMConfig, OpenAIProvider};
 use crate::llm::defs::LLMProvider;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_openai::{
     Client,
     types::{
@@ -28,6 +28,50 @@ impl OpenAIClient {
             api_key: llmconfig.api_key,
             model: llmconfig.model_id,
         }
+    }
+
+    pub async fn non_streaming_request(
+        &self,
+        sys_prompt: &str,
+        review_prompt: &str,
+    ) -> Result<String> {
+        // Check for OPENROUTER_API_KEY environment variable if provider is OpenRouter
+        let api_key = if matches!(self.provider, OpenAIProvider::OpenRouter) {
+            std::env::var("OPENROUTER_API_KEY").unwrap_or(self.api_key.clone())
+        } else {
+            self.api_key.clone()
+        };
+
+        let config = async_openai::config::OpenAIConfig::new()
+            .with_api_key(api_key)
+            .with_api_base(self.provider.get_endpoint());
+        let client = Client::with_config(config);
+
+        let request = CreateChatCompletionRequestArgs::default()
+            .model(&self.model)
+            .messages(vec![
+                ChatCompletionRequestMessage::System(ChatCompletionRequestSystemMessage::from(
+                    sys_prompt,
+                )),
+                ChatCompletionRequestMessage::User(ChatCompletionRequestUserMessage::from(
+                    review_prompt,
+                )),
+            ])
+            .temperature(0.0)
+            .frequency_penalty(0.5)
+            .presence_penalty(0.6)
+            .build()?;
+
+        let response = client.chat().create(request).await?;
+
+        let mut full_text = String::new();
+        for choice in response.choices {
+            if let Some(content) = choice.message.content {
+                full_text.push_str(&content);
+            }
+        }
+
+        Ok(full_text)
     }
 
     pub async fn stream_chat_to_terminal(
@@ -78,8 +122,6 @@ impl OpenAIClient {
                 .unwrap(),
         );
 
-        // Start the progress bar
-        // Start the progress bar
         let should_stop = Arc::new(AtomicBool::new(false));
         let should_stop_clone = should_stop.clone();
         let pb_clone = pb.clone();
@@ -93,50 +135,82 @@ impl OpenAIClient {
             pb_clone.finish_and_clear();
         });
 
-        // Use a scope to ensure the progress bar is always cleared
-        let result = async {
-            let res = async {
-                while let Some(item) = stream.next().await {
+        // Timeout for first token (30 seconds)
+        let first_token_timeout = Duration::from_secs(30);
+        let mut received_token = false;
+
+        // Process stream with timeout for first token
+        'stream_loop: loop {
+            let next_item = tokio::time::timeout(first_token_timeout, stream.next()).await;
+
+            match next_item {
+                Ok(Some(Ok(chunk))) => {
                     // Mark that we've started receiving tokens - stop the progress bar
                     if !should_stop.load(Ordering::Relaxed) {
                         should_stop.store(true, Ordering::Relaxed);
                     }
 
-                    // Handle potential errors from the stream
-                    let chunk = match item {
-                        Ok(chunk) => chunk,
-                        Err(err) => {
-                            // Signal to stop the progress bar before returning error
-                            should_stop.store(true, Ordering::Relaxed);
-                            return Err(err.into());
-                        }
-                    };
-
+                    let mut had_content = false;
                     for choice in chunk.choices {
                         if let Some(text) = choice.delta.content {
                             print!("{text}");
                             out.flush()?;
                             full_text.push_str(&text);
+                            had_content = true;
+                            received_token = true;
+                        }
+                    }
+
+                    if had_content {
+                        // Continue processing stream without timeout
+                        while let Some(item) = stream.next().now_or_never() {
+                            match item {
+                                Some(Ok(chunk)) => {
+                                    for choice in chunk.choices {
+                                        if let Some(text) = choice.delta.content {
+                                            print!("{text}");
+                                            out.flush()?;
+                                            full_text.push_str(&text);
+                                        }
+                                    }
+                                }
+                                Some(Err(err)) => {
+                                    should_stop.store(true, Ordering::Relaxed);
+                                    return Err(err.into());
+                                }
+                                None => break 'stream_loop,
+                            }
                         }
                     }
                 }
-                Ok(full_text)
+                Ok(Some(Err(err))) => {
+                    should_stop.store(true, Ordering::Relaxed);
+                    return Err(err.into());
+                }
+                Ok(None) => break 'stream_loop,
+                Err(_) => {
+                    // Timeout occurred
+                    break 'stream_loop;
+                }
             }
-            .await;
-
-            // Ensure progress bar is stopped
-            should_stop.store(true, Ordering::Relaxed);
-            res
         }
-        .await;
 
+        should_stop.store(true, Ordering::Relaxed);
         // Wait for the progress thread to finish
         let _ = progress_thread_handle.join();
 
-        // Add a newline after stream finishes
+        // If no tokens received, try non-streaming fallback
+        if !received_token {
+            println!("[INFO] Switching to non-streaming request due to timeout");
+            let response = self.non_streaming_request(sys_prompt, review_prompt).await?;
+            print!("{}", response);
+            full_text = response;
+        }
+
+        // Add a newline after output
         println!();
 
-        result
+        Ok(full_text)
     }
 }
 
