@@ -5,7 +5,7 @@ use crate::git_helpers::ExpandedCommit;
 use crate::llm::{defs::LLMProvider, openai::OpenAIClient};
 use crate::term_helpers;
 
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 
 use std::path::PathBuf;
 use std::process;
@@ -101,7 +101,7 @@ fn read_context_files(context_file: ContextFile) -> Result<String, std::io::Erro
         ContextFile::RvContext => ".rv_context",
         ContextFile::RvGuidelines => ".rv_guidelines",
     };
-    
+
     match std::fs::read_to_string(filename) {
         Ok(content) => Ok(content),
         Err(e) => {
@@ -115,20 +115,20 @@ fn read_context_files(context_file: ContextFile) -> Result<String, std::io::Erro
 }
 pub fn pack_prompt_with_context(rvconfig: &RvConfig) -> String {
     let mut system_prompt = SYSTEM_PROMPT.to_string();
-    
+
     // Handle custom guidelines
     let mut guidelines_content = String::new();
     if rvconfig.load_rv_guidelines {
         match read_context_files(ContextFile::RvGuidelines) {
             Ok(content) if !content.trim().is_empty() => {
-                guidelines_content.push_str(&CUSTOM_GUIDELINES_INTRO);
+                guidelines_content.push_str(CUSTOM_GUIDELINES_INTRO);
                 guidelines_content.push_str(&content);
             }
             _ => {}
         }
     }
     system_prompt = system_prompt.replace("{{custom_guidelines}}", &guidelines_content);
-    
+
     // Handle custom prompt
     let mut custom_prompt_content = String::new();
     if rvconfig.load_rv_context {
@@ -140,7 +140,7 @@ pub fn pack_prompt_with_context(rvconfig: &RvConfig) -> String {
         }
     }
     system_prompt = system_prompt.replace("{{custom_prompt}}", &custom_prompt_content);
-    
+
     system_prompt
 }
 
@@ -154,14 +154,14 @@ pub fn raw_review(
     if file_path.is_some() {
         let path = file_path.unwrap();
         if !path.exists() {
-            println!("[ERROR] File does not exist: {:?}", path);
+            println!("[ERROR] File does not exist: {path:?}");
             return;
         }
-        
+
         // Create ExpandedCommit structure for single file
         let mut expcommit = ExpandedCommit::new();
         expcommit.sources = Some(vec![path.clone()]);
-        
+
         // Read file content
         match std::fs::read_to_string(&path) {
             Ok(content) => {
@@ -170,58 +170,63 @@ pub fn raw_review(
                     // Since there's no actual diff, we can show the entire file
                     expcommit.diffs = Some(vec![format!("Raw file content:\n{}", content)]);
                 } else {
-                    expcommit.diffs = Some(vec![String::from("File content not shown in diff mode")]);
+                    expcommit.diffs =
+                        Some(vec![String::from("File content not shown in diff mode")]);
                 }
-                
+
                 // Process the review
                 process_review(&rvconfig, llm_selection, expcommit, None);
             }
             Err(e) => {
-                println!("[ERROR] Failed to read file: {}", e);
+                println!("[ERROR] Failed to read file: {e}");
             }
         }
     } else if dir_path.is_some() {
         let path = dir_path.unwrap();
         if !path.exists() || !path.is_dir() {
-            println!("[ERROR] Directory does not exist or is not a directory: {:?}", path);
+            println!(
+                "[ERROR] Directory does not exist or is not a directory: {path:?}"
+            );
             return;
         }
-        
+
         let recursive = recursive.unwrap_or(false);
-        
+
         // Collect all files in directory
         let mut files = Vec::new();
         if let Err(e) = collect_files(&path, recursive, &mut files) {
-            println!("[ERROR] Failed to collect files: {}", e);
+            println!("[ERROR] Failed to collect files: {e}");
             return;
         }
-        
+
         if files.is_empty() {
             println!("[ERROR] No files found in directory");
             return;
         }
-        
+
         // Create ExpandedCommit structure for directory
         let mut expcommit = ExpandedCommit::new();
         expcommit.sources = Some(files.clone());
-        
+
         // Read all file contents
         let mut diffs = Vec::new();
         for file_path in files {
             match std::fs::read_to_string(&file_path) {
                 Ok(content) => {
                     if rvconfig.diff_profile.report_sources {
-                        diffs.push(format!("File: {:?}\n{}", file_path, content));
+                        diffs.push(format!("File: {file_path:?}\n{content}"));
                     } else {
-                        diffs.push(format!("File: {:?} (content not shown)", file_path));
+                        diffs.push(format!("File: {file_path:?} (content not shown)"));
                     }
                 }
                 Err(e) => {
-                    diffs.push(format!("[ERROR] Failed to read file {:?}: {}", file_path, e));
+                    diffs.push(format!(
+                        "[ERROR] Failed to read file {file_path:?}: {e}"
+                    ));
                 }
             }
         }
-        
+
         expcommit.diffs = Some(diffs);
         process_review(&rvconfig, llm_selection, expcommit, None);
     } else {
@@ -231,11 +236,15 @@ pub fn raw_review(
     }
 }
 
-fn collect_files(dir: &PathBuf, recursive: bool, files: &mut Vec<PathBuf>) -> Result<(), std::io::Error> {
+fn collect_files(
+    dir: &PathBuf,
+    recursive: bool,
+    files: &mut Vec<PathBuf>,
+) -> Result<(), std::io::Error> {
     for entry in std::fs::read_dir(dir)? {
         let entry = entry?;
         let path = entry.path();
-        
+
         if path.is_dir() {
             if recursive {
                 collect_files(&path, recursive, files)?;
@@ -283,10 +292,16 @@ fn process_review(
     };
 
     // Check if the API key is the placeholder or empty, and if it's OpenRouter, check for environment variable
-    if llm_configuration.api_key == "[insert api key here]" || llm_configuration.api_key.is_empty() {
-        if matches!(llm_configuration.provider, crate::config::OpenAIProvider::OpenRouter) {
+    if llm_configuration.api_key == "[insert api key here]" || llm_configuration.api_key.is_empty()
+    {
+        if matches!(
+            llm_configuration.provider,
+            crate::config::OpenAIProvider::OpenRouter
+        ) {
             if std::env::var("OPENROUTER_API_KEY").is_err() {
-                println!("[ERROR] Insert compatible API key inside `~/.config/rv/config.toml` or set OPENROUTER_API_KEY environment variable");
+                println!(
+                    "[ERROR] Insert compatible API key inside `~/.config/rv/config.toml` or set OPENROUTER_API_KEY environment variable"
+                );
                 process::exit(1);
             }
         } else {
@@ -298,8 +313,8 @@ fn process_review(
     let openai_client = OpenAIClient::from_config(llm_configuration.clone());
 
     // Build system prompt with context
-    let system_prompt = pack_prompt_with_context(&rvconfig);
-    
+    let system_prompt = pack_prompt_with_context(rvconfig);
+
     // Add README to the review prompt if configured
     let mut enhanced_review_prompt = review_prompt;
     if rvconfig.load_readme {
@@ -312,7 +327,7 @@ fn process_review(
             _ => {}
         }
     }
-    
+
     openai_client.stream_request_stdout(system_prompt, enhanced_review_prompt);
 }
 
@@ -336,7 +351,7 @@ pub fn git_review(
         if exp_result.is_ok() {
             expcommit = Some(exp_result.unwrap());
         }
-      } else if branch.is_some() {
+    } else if branch.is_some() {
         let mut used_branch_mode: BranchAgainst = rvconfig.default_branch_mode;
         if branch_mode.is_some() {
             used_branch_mode = branch_mode.unwrap();
@@ -360,7 +375,8 @@ pub fn git_review(
                 println!("Staged is empty, switching to HEAD");
                 let commit_str = "HEAD";
                 // TODO Better error handling
-                let commit_oid = git_helpers::get_oid(&commit_str).context("Failed to get commit OID")?;
+                let commit_oid =
+                    git_helpers::get_oid(commit_str).context("Failed to get commit OID")?;
                 exp_result = git_helpers::expanded_from_commit(commit_oid);
 
                 if exp_result.is_ok() {
@@ -374,7 +390,8 @@ pub fn git_review(
             println!("Staged is empty, switching to HEAD");
             let commit_str = "HEAD";
             // TODO Better error handling
-            let commit_oid = git_helpers::get_oid(&commit_str).context("Failed to get commit OID")?;
+            let commit_oid =
+                git_helpers::get_oid(commit_str).context("Failed to get commit OID")?;
             exp_result = git_helpers::expanded_from_commit(commit_oid);
 
             if exp_result.is_ok() {
@@ -384,7 +401,12 @@ pub fn git_review(
     }
 
     if expcommit.is_some() {
-        process_review(&rvconfig, llm_selection, expcommit.unwrap(), log_xml_structure);
+        process_review(
+            &rvconfig,
+            llm_selection,
+            expcommit.unwrap(),
+            log_xml_structure,
+        );
     } else {
         println!("[ERROR] Git integrations failed. Are you running `rv` inside a Git repository?");
         println!("      | [LOG] {expcommit:?}");

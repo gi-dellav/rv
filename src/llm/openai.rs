@@ -11,8 +11,8 @@ use async_openai::{
 use futures::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::io::{Write, stdout};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 pub struct OpenAIClient {
@@ -41,7 +41,7 @@ impl OpenAIClient {
         } else {
             self.api_key
         };
-        
+
         let config = async_openai::config::OpenAIConfig::new()
             .with_api_key(api_key)
             .with_api_base(self.provider.get_endpoint());
@@ -67,29 +67,30 @@ impl OpenAIClient {
 
         let mut out = stdout();
         let mut full_text = String::new();
-        
+
         // Create a progress bar
         let pb = ProgressBar::new_spinner();
         pb.set_message("Reasoning...");
         pb.set_style(
             ProgressStyle::default_spinner()
                 .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
-                .template("{spinner} {msg}").unwrap()
+                .template("{spinner} {msg}")
+                .unwrap(),
         );
-        
+
         // Start the progress bar
         // Start the progress bar
         let should_stop = Arc::new(AtomicBool::new(false));
         let should_stop_clone = should_stop.clone();
         let pb_clone = pb.clone();
-        
+
         // Spawn a thread to tick the progress bar until we stop it
         let progress_thread_handle = std::thread::spawn(move || {
             while !should_stop_clone.load(Ordering::Relaxed) {
                 pb_clone.tick();
                 std::thread::sleep(Duration::from_millis(100));
-        }
-        pb_clone.finish_and_clear();
+            }
+            pb_clone.finish_and_clear();
         });
 
         // Use a scope to ensure the progress bar is always cleared
@@ -100,7 +101,7 @@ impl OpenAIClient {
                     if !should_stop.load(Ordering::Relaxed) {
                         should_stop.store(true, Ordering::Relaxed);
                     }
-                    
+
                     // Handle potential errors from the stream
                     let chunk = match item {
                         Ok(chunk) => chunk,
@@ -120,16 +121,18 @@ impl OpenAIClient {
                     }
                 }
                 Ok(full_text)
-            }.await;
-            
+            }
+            .await;
+
             // Ensure progress bar is stopped
             should_stop.store(true, Ordering::Relaxed);
             res
-        }.await;
+        }
+        .await;
 
         // Wait for the progress thread to finish
         let _ = progress_thread_handle.join();
-        
+
         // Add a newline after stream finishes
         println!();
 

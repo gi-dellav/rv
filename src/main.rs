@@ -68,19 +68,17 @@ fn main() {
             println!(
                 "[ERROR] You can enable only one parameter between --commit, --branch or --pr"
             );
-        } else {
-            if let Err(e) = review::git_review(
-                rvconfig,
-                args.llm,
-                args.commit,
-                args.branch,
-                args.branch_mode,
-                args.pr,
-                args.log_xml_structure,
-            ) {
-                eprintln!("Error during code review: {}", e);
-                std::process::exit(1);
-            }
+        } else if let Err(e) = review::git_review(
+            rvconfig,
+            args.llm,
+            args.commit,
+            args.branch,
+            args.branch_mode,
+            args.pr,
+            args.log_xml_structure,
+        ) {
+            eprintln!("Error during code review: {e}");
+            std::process::exit(1);
         }
     }
 }

@@ -32,11 +32,10 @@ impl ExpandedCommit {
 
     pub fn is_empty(self) -> bool {
         // Sources must exist and have at least 1 element
-        if self.sources.is_some()
-            && self.sources.unwrap().len() > 0 {
-                return false;
-            }
-        return true;
+        if self.sources.is_some() && self.sources.unwrap().len() > 0 {
+            return false;
+        }
+        true
     }
 
     /// Produce XML-like output useful for LLM prompting
