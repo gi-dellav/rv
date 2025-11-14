@@ -1,6 +1,6 @@
 use crate::config::{LLMConfig, OpenAIProvider};
 use crate::llm::defs::LLMProvider;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use async_openai::{
     Client,
     types::{
@@ -91,8 +91,9 @@ impl OpenAIClient {
             .with_api_base(self.provider.get_endpoint());
         let client = Client::with_config(config);
 
+        let model_clone = self.model.clone();
         let request = CreateChatCompletionRequestArgs::default()
-            .model(self.model)
+            .model(model_clone)
             .messages(vec![
                 ChatCompletionRequestMessage::System(ChatCompletionRequestSystemMessage::from(
                     sys_prompt,
@@ -158,13 +159,11 @@ impl OpenAIClient {
                         should_stop.store(true, Ordering::Relaxed);
                     }
 
-                    let mut had_content = false;
                     for choice in chunk.choices {
                         if let Some(text) = choice.delta.content {
                             print!("{text}");
                             out.flush()?;
                             full_text.push_str(&text);
-                            had_content = true;
                             received_token = true;
                         }
                     }
