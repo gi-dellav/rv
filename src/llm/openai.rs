@@ -140,8 +140,16 @@ impl OpenAIClient {
         let mut received_token = false;
 
         // Process stream with timeout for first token
-        'stream_loop: loop {
-            let next_item = tokio::time::timeout(first_token_timeout, stream.next()).await;
+        loop {
+            let next_item = if !received_token {
+                tokio::time::timeout(first_token_timeout, stream.next()).await
+            } else {
+                // After first token, wait indefinitely
+                match stream.next().await {
+                    Some(item) => Ok(Some(item)),
+                    None => Ok(None),
+                }
+            };
 
             match next_item {
                 Ok(Some(Ok(chunk))) => {
@@ -160,37 +168,15 @@ impl OpenAIClient {
                             received_token = true;
                         }
                     }
-
-                    if had_content {
-                        // Continue processing stream without timeout
-                        while let Some(item) = stream.next().now_or_never() {
-                            match item {
-                                Some(Ok(chunk)) => {
-                                    for choice in chunk.choices {
-                                        if let Some(text) = choice.delta.content {
-                                            print!("{text}");
-                                            out.flush()?;
-                                            full_text.push_str(&text);
-                                        }
-                                    }
-                                }
-                                Some(Err(err)) => {
-                                    should_stop.store(true, Ordering::Relaxed);
-                                    return Err(err.into());
-                                }
-                                None => break 'stream_loop,
-                            }
-                        }
-                    }
                 }
                 Ok(Some(Err(err))) => {
                     should_stop.store(true, Ordering::Relaxed);
                     return Err(err.into());
                 }
-                Ok(None) => break 'stream_loop,
+                Ok(None) => break, // End of stream
                 Err(_) => {
-                    // Timeout occurred
-                    break 'stream_loop;
+                    // Timeout occurred only if we haven't received any token
+                    break;
                 }
             }
         }
