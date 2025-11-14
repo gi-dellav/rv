@@ -81,9 +81,9 @@ impl OpenAIClient {
     ) -> Result<String> {
         // Check for OPENROUTER_API_KEY environment variable if provider is OpenRouter
         let api_key = if matches!(self.provider, OpenAIProvider::OpenRouter) {
-            std::env::var("OPENROUTER_API_KEY").unwrap_or(self.api_key)
+            std::env::var("OPENROUTER_API_KEY").unwrap_or_else(|_| self.api_key.clone())
         } else {
-            self.api_key
+            self.api_key.clone()
         };
 
         let config = async_openai::config::OpenAIConfig::new()
