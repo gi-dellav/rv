@@ -67,7 +67,24 @@ fn default_allow_reasoning() -> bool {
 }
 
 fn default_llm_configs() -> Vec<LLMConfig> {
-    vec![LLMConfig::default()]
+    vec![
+        LLMConfig {
+            configuration_name: String::from("default"),
+            provider: default_openai_provider(),
+            model_id: String::from("deepseek/deepseek-r1-distill-qwen-32b"),
+            api_key: default_api_key(),
+            allow_reasoning: true,
+            custom_prompt: None,
+        },
+        LLMConfig {
+            configuration_name: String::from("think"),
+            provider: default_openai_provider(),
+            model_id: String::from("deepseek/deepseek-r1"),
+            api_key: default_api_key(),
+            allow_reasoning: true,
+            custom_prompt: None,
+        },
+    ]
 }
 
 fn default_default_llm_config() -> String {
@@ -178,8 +195,7 @@ impl Default for LLMConfig {
 impl Default for RvConfig {
     fn default() -> Self {
         let diff_profile: DiffProfile = Default::default();
-        let llm_default_config: LLMConfig = Default::default();
-        let llm_configs = vec![llm_default_config];
+        let llm_configs = default_llm_configs();
 
         RvConfig {
             diff_profile,
