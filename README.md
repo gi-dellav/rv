@@ -7,10 +7,10 @@ It works as a CLI tool easy to use and integrate, allowing to review the code th
 
 - **Unix philosophy** <br> *rv* follows the Unix philosophy by providing one minimalstic tool (~1k LoC) that does one thing (code review) well.
 - **Cheap and low-latency** <br> *rv* is optimized to use cheap and low-latency models in order to allow for reviews that takes less than 10 seconds and cost about $0.001 (on average, tested with gpt-4o-mini)
-- **Deterministic** <br> *rv* uses deterministic sampling (LLM's temperature set to 0 and other parameters tweaked) in order to avoid anomalies in the output. <br> NOTE: Beacuse of issues like token tie-breaking or non-deterministic floating point operations on GPUs, results might not be fully deterministic; we plan on implementing seed support on supported providers in order to allow for fully deterministic prompting
+- **Deterministic** <br> *rv* uses deterministic sampling (LLM's temperature set to 0 and other parameters tweaked) in order to avoid anomalies in the output.
 - **Fully customizable** <br> *rv* is designed to give full freedom with its configuration file, allowing for different providers, LLMs and prompts
 - **Semplicity of code** <br> *rv* is designed to be written using clean, understandable and safe (as in no `unsafe` instructions used) Rust code
-- **Open source and non-monetized** <br> *rv* is released under the GPL license and we won't sell subscriptions, cloud credits or other form of monetized services to our end users
+- **Open source and non-monetized** <br> *rv* is released under the GPL license and we will never sell subscriptions, cloud credits or other form of monetized services to our end users
 
 ## How To Install
 
@@ -34,38 +34,26 @@ We reccomend using [OpenRouter](https://openrouter.ai) as it allows to use diffe
 Here are the links for [creating an account](https://openrouter.ai/), [managing API keys](https://openrouter.ai/settings/keys), [connecting other provider](https://openrouter.ai/settings/integrations) and [viewing all free models](https://openrouter.ai/models?max_price=0).  
 Once you have the API key, you can insert it in your configuration file (on Linux, `~/.config/rv/config.toml`).    
 
-## Note about models
+## Model profiles
 
-The current default model is `deepseek/deepseek-r1:free`, which provides great reasoning code reviews without having to pay.   
-If your usage surpasses the limits of the free tier consider using `deepseek/deepseek-r1` and if you need a low-latency alternative, try `openai/gpt-4o-mini`.    
-A good setup might be to have a low-latency configuration for most reviews and a reasoning configuration in case low-latency reviews are not enough for the current tasks; you can switch between different configurations using `-l`/`--llm`.
-
-### Benchmarks
-
-Tested with a simple commit with routine line changes (relevant as lots of diffs can induce certain models to allucinate).
-All of the models in this table can do basic code review, but only the more advanced can do high-quality reports.
-`x` symbols rappresent models that are not yet tested but are planned to be tested before the release of v1.0.0.
-
-| Model    | Time Spent | Cost | Reasoning | Basic Test | Repetition Test | Coding Rating (LiveBench) |
-|--|--|--|--|--|--|--|
-|`openai/gpt-4o-mini`| 7s | 0,0003$ | ❌ | ✅ | ❌ | <69.29 |
-|`openai/gpt-4o`| 11s | 0,006$ | ❌ | ✅ | ❌ | 69.29 |
-|`deepseek/deepseek-r1`| 49s | 0,006$ | ✅ | ✅ | ✅ | 76.07 |
-|`deepseek/deepseek-r1:free`| 50s | 0$ | ✅ | ✅ | ✅ | 76.07 |
+The current suggested models is `qwen/qwen3-coder-30b-a3b-instruct` (for the `default` profile) and `qwen/qwen3-coder` (for the `think` profile) for more intensive tasks.
+You can switch between different profiles using the `-l` CLI flag and you can add or remove profiles from `~/.config/rv/config.toml`).
+NOTE: Deepseek R1 was also tested and it produced high-quality reports, while cheaper OpenAI models like `gpt-4o` fail on complex commits.
 
 ## Future work
 
 Milestones planned for the v1.0.0:
 - custom prompt support
+- GitHub pull requests
 
 Milestones planned for the future:
-- *text mode* for reviewing content and style of natural language documents, with support for TXT, MarkDown, LaTex (other formats as read-only).
-- *chat tool* for turning the review into a chatbot-like assistant
-- *actions tool* for executing common git commands with one keystroke
-- *fix tool* for producing and applying fixes directly from the review
+- *chat tool* for turning the review into a chatbot-like assistant **[expected for v1.1.0]**
+- *fix tool* for producing and applying fixes directly from the review **[expected for v1.2.0]**
+- full project context support (indexed references to other code or text files and full project reviews) **[expected for v1.3.0]**
+- *text mode* for reviewing content and style of natural language documents, with support for TXT, MarkDown, LaTex.
+- markdown rendering with external tools (ex. [glow](https://github.com/charmbracelet/glow) )
 - ollama support for local inference
-- custom OpenAPI support
-- full project context support (indexed references to other code or text files, full project reviews for better security and architectural reports)
+- support for other cloud LLM providers
 
 ## Star History
 [![Star History Chart](https://api.star-history.com/svg?repos=gi-dellav/rv&type=Date)](https://www.star-history.com/#gi-dellav/rv&Date)
