@@ -36,10 +36,69 @@ pub fn default_config_path() -> io::Result<PathBuf> {
     Ok(path)
 }
 
+// --- serde default helpers --------------------------------------------------
+
+fn default_report_diffs() -> bool {
+    true
+}
+
+fn default_report_sources() -> bool {
+    true
+}
+
+fn default_configuration_name() -> String {
+    "default".to_string()
+}
+
+fn default_openai_provider() -> OpenAIProvider {
+    OpenAIProvider::OpenRouter
+}
+
+fn default_model_id() -> String {
+    "deepseek/deepseek-r1:free".to_string()
+}
+
+fn default_api_key() -> String {
+    "[insert api key here]".to_string()
+}
+
+fn default_allow_reasoning() -> bool {
+    true
+}
+
+fn default_llm_configs() -> Vec<LLMConfig> {
+    vec![LLMConfig::default()]
+}
+
+fn default_default_llm_config() -> String {
+    "default".to_string()
+}
+
+fn default_branch_mode() -> BranchAgainst {
+    BranchAgainst::Main
+}
+
+fn default_load_readme() -> bool {
+    true
+}
+
+fn default_load_rv_context() -> bool {
+    true
+}
+
+fn default_load_rv_guidelines() -> bool {
+    true
+}
+
+// ----------------------------------------------------------------------------
+
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[serde(default)]
 /// How the LLM context gets produced
 pub struct DiffProfile {
+    #[serde(default = "default_report_diffs")]
     pub report_diffs: bool,
+    #[serde(default = "default_report_sources")]
     pub report_sources: bool,
 }
 
@@ -50,28 +109,43 @@ pub enum CustomPrompt {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(default)]
 /// LLM provider specific configuration
 pub struct LLMConfig {
+    #[serde(default = "default_configuration_name")]
     pub configuration_name: String,
+    #[serde(default = "default_openai_provider")]
     pub provider: OpenAIProvider,
+    #[serde(default = "default_model_id")]
     pub model_id: String,
+    #[serde(default = "default_api_key")]
     pub api_key: String,
 
     // TODO: Implement optional reasioning
+    #[serde(default = "default_allow_reasoning")]
     pub allow_reasoning: bool,
 
+    #[serde(default)]
     pub custom_prompt: Option<CustomPrompt>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(default)]
 /// Main configuration structure, used in `~/.config/rv/config.toml`
 pub struct RvConfig {
+    #[serde(default)]
     pub diff_profile: DiffProfile,
+    #[serde(default = "default_llm_configs")]
     pub llm_configs: Vec<LLMConfig>,
+    #[serde(default = "default_default_llm_config")]
     pub default_llm_config: String,
+    #[serde(default = "default_branch_mode")]
     pub default_branch_mode: BranchAgainst,
+    #[serde(default = "default_load_readme")]
     pub load_readme: bool,
+    #[serde(default = "default_load_rv_context")]
     pub load_rv_context: bool,
+    #[serde(default = "default_load_rv_guidelines")]
     pub load_rv_guidelines: bool,
 }
 
@@ -166,6 +240,13 @@ pub enum OpenAIProvider {
     OpenAI,
     OpenRouter,
 }
+
+impl Default for OpenAIProvider {
+    fn default() -> Self {
+        OpenAIProvider::OpenRouter
+    }
+}
+
 impl OpenAIProvider {
     pub fn get_endpoint(self) -> String {
         match self {
@@ -190,4 +271,10 @@ pub enum BranchAgainst {
     Current,
     /// Compare branch against the repository's `main`
     Main,
+}
+
+impl Default for BranchAgainst {
+    fn default() -> Self {
+        BranchAgainst::Main
+    }
 }
