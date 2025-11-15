@@ -65,6 +65,9 @@ impl ExpandedCommit {
                 diff_counter += 1;
             }
         }
+        if diff_profile.report_diffs && diff_profile.report_sources {
+            println!("\n\n---SPLIT----\n--Do not confuse text before and after the SPLIT--\n\n");
+        }
         if diff_profile.report_sources {
             for source_val in sources {
                 // Open <source NAME> tag
