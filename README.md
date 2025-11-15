@@ -5,8 +5,8 @@ It works as a CLI tool easy to use and integrate, allowing to review the code th
 
 ## Features
 
-- **Unix philosophy** <br> *rv* follows the Unix philosophy by providing one minimalstic tool (~1k LoC) that does one thing (code review) well.
-- **Cheap and low-latency** <br> *rv* is optimized to use cheap and low-latency models in order to allow for reviews that takes less than 10 seconds and cost about $0.001 (on average, tested with gpt-4o-mini)
+- **Unix philosophy** <br> *rv* follows the Unix philosophy by providing one minimalstic tool (~1.5k LoC) that does one thing well.
+- **Cheap and low-latency** <br> *rv* is optimized to use cheap and low-latency models in order to allow for reviews that takes less than 10 seconds and cost about $0.002 (on average, tested with Qwen3-Coder-30B)
 - **Deterministic** <br> *rv* uses deterministic sampling (LLM's temperature set to 0 and other parameters tweaked) in order to avoid anomalies in the output.
 - **Fully customizable** <br> *rv* is designed to give full freedom with its configuration file, allowing for different providers, LLMs and prompts
 - **Semplicity of code** <br> *rv* is designed to be written using clean, understandable and safe (as in no `unsafe` instructions used) Rust code
