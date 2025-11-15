@@ -79,7 +79,7 @@ fn default_llm_configs() -> Vec<LLMConfig> {
         LLMConfig {
             configuration_name: String::from("think"),
             provider: default_openai_provider(),
-            model_id: String::from("deepseek/deepseek-r1"),
+            model_id: String::from("deepseek/deepseek-r1:online"),
             api_key: default_api_key(),
             allow_reasoning: true,
             custom_prompt: None,
