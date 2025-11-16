@@ -187,7 +187,9 @@ impl OpenAIClient {
         // If no tokens received, try non-streaming fallback
         if !received_token {
             println!("[INFO] Switching to non-streaming request due to timeout");
-            let response = self.non_streaming_request(sys_prompt, review_prompt).await?;
+            let response = self
+                .non_streaming_request(sys_prompt, review_prompt)
+                .await?;
             print!("{}", response);
             full_text = response;
         }

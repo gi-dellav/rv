@@ -78,9 +78,15 @@ impl ExpandedCommit {
                 xml_string.push_str(" >\n");
 
                 // Add source
-                let source_bytes = fs::read(source_val).unwrap();
-                let source_text = String::from_utf8_lossy(&source_bytes).to_string();
-                xml_string.push_str(&source_text);
+                match fs::read(source_val) {
+                    Ok(source_bytes) => {
+                        let source_text = String::from_utf8_lossy(&source_bytes);
+                        xml_string.push_str(&source_text);
+                    }
+                    Err(err) => {
+                        xml_string.push_str(&format!("[source unavailable: {err}]"));
+                    }
+                }
 
                 // Close </source> tag
                 xml_string.push_str("\n</source>\n");
@@ -282,6 +288,22 @@ pub fn expanded_from_branch(
     let new_tree_ref = new_tree.as_ref();
 
     diff_trees_to_expanded(&repo, old_tree_ref, new_tree_ref)
+}
+
+pub fn expanded_between_commits(
+    base_oid: Oid,
+    head_oid: Oid,
+) -> Result<ExpandedCommit, git2::Error> {
+    let repo = Repository::discover(".")?;
+    let base_commit = repo.find_commit(base_oid)?;
+    let head_commit = repo.find_commit(head_oid)?;
+    let base_tree = base_commit.tree().ok();
+    let head_tree = head_commit.tree().ok();
+
+    let base_tree_ref = base_tree.as_ref();
+    let head_tree_ref = head_tree.as_ref();
+
+    diff_trees_to_expanded(&repo, base_tree_ref, head_tree_ref)
 }
 
 pub fn get_oid(rev: &str) -> Result<Oid, Error> {

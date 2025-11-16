@@ -2,6 +2,7 @@ use crate::config::BranchAgainst;
 use crate::config::{ContextFile, RvConfig};
 use crate::git_helpers;
 use crate::git_helpers::ExpandedCommit;
+use crate::github;
 use crate::llm::{defs::LLMProvider, openai::OpenAIClient};
 use crate::term_helpers;
 
@@ -314,29 +315,32 @@ pub fn git_review(
 ) -> Result<()> {
     let mut expcommit: Option<ExpandedCommit> = None;
 
-    if commit.is_some() {
-        let commit_str = commit.unwrap();
-        // TODO Better error handling
+    if let Some(commit_str) = commit {
+        //println!("[DEBUG] Reviewing commit: {}", commit_str);
         let commit_oid = git_helpers::get_oid(&commit_str).context("Failed to get commit OID")?;
         let exp_result = git_helpers::expanded_from_commit(commit_oid);
 
         if exp_result.is_ok() {
             expcommit = Some(exp_result.unwrap());
         }
-    } else if branch.is_some() {
+    } else if let Some(branch_name) = branch {
+        //println!("[DEBUG] Reviewing branch: {}", branch_name);
         let mut used_branch_mode: BranchAgainst = rvconfig.default_branch_mode;
-        if branch_mode.is_some() {
-            used_branch_mode = branch_mode.unwrap();
+        if let Some(mode) = branch_mode {
+            used_branch_mode = mode;
         }
-        let branch_name: String = branch.unwrap();
 
         let exp_result = git_helpers::expanded_from_branch(&branch_name, used_branch_mode);
         if exp_result.is_ok() {
             expcommit = Some(exp_result.unwrap());
         }
-    } else if github_pr.is_some() {
-        todo!("Github PR support");
+    } else if let Some(pr_id) = github_pr {
+        //println!("[DEBUG] Reviewing GitHub PR: {}", pr_id);
+        let pr_expcommit = github::expanded_commit_from_pr(&pr_id)
+            .context("Failed to build diff from GitHub pull request")?;
+        expcommit = Some(pr_expcommit);
     } else {
+        //println!("[DEBUG] Reviewing staged changes or HEAD");
         // Staging edits, if empty HEAD commit
         let mut exp_result = git_helpers::staged_diffs(rvconfig.diff_profile);
 
@@ -372,13 +376,8 @@ pub fn git_review(
         }
     }
 
-    if expcommit.is_some() {
-        process_review(
-            &rvconfig,
-            llm_selection,
-            expcommit.unwrap(),
-            log_xml_structure,
-        );
+    if let Some(expanded) = expcommit {
+        process_review(&rvconfig, llm_selection, expanded, log_xml_structure);
     } else {
         println!("[ERROR] Git integrations failed. Are you running `rv` inside a Git repository?");
         println!("      | [LOG] {expcommit:?}");

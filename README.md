@@ -5,7 +5,7 @@ It works as a CLI tool easy to use and integrate, allowing to review the code th
 
 ## Features
 
-- **Unix philosophy** <br> *rv* follows the Unix philosophy by providing one minimalstic tool (~1.5k LoC) that does one thing well.
+- **Unix philosophy** <br> *rv* follows the Unix philosophy by providing a minimalstic tool (~1.5k LoC) that does one thing well.
 - **Cheap and low-latency** <br> *rv* is optimized to use cheap and low-latency models in order to allow for reviews that takes less than 10 seconds and cost about $0.002 (on average, tested with Qwen3-Coder-30B)
 - **Deterministic** <br> *rv* uses deterministic sampling (LLM's temperature set to 0 and other parameters tweaked) in order to avoid anomalies in the output.
 - **Fully customizable** <br> *rv* is designed to give full freedom with its configuration file, allowing for different providers, LLMs and prompts
@@ -34,24 +34,31 @@ We reccomend using [OpenRouter](https://openrouter.ai) as it allows to use diffe
 Here are the links for [creating an account](https://openrouter.ai/), [managing API keys](https://openrouter.ai/settings/keys), [connecting other provider](https://openrouter.ai/settings/integrations) and [viewing all free models](https://openrouter.ai/models?max_price=0).  
 Once you have the API key, you can insert it in your configuration file (on Linux, `~/.config/rv/config.toml`).    
 
+## How to use
+
+For reviewing staged changes or the last commit: `rv`  
+For reviewing a specific commit: `rv -c [commit]`  
+For reviewing a specific branch: `rv -b [branch]`  
+For reviewing a Github PR: `rv -p [pr-id]` (Requires `gh` to be installed)  
+For switching to a different LLM profile: `rv -l [llm]`  
+For reviewing files without the Git integration: `rv --raw`  
+
 ## Model profiles
 
-The current suggested models is `qwen/qwen3-coder-30b-a3b-instruct` (for the `default` profile) and `qwen/qwen3-coder` (for the `think` profile) for more intensive tasks.
-You can switch between different profiles using the `-l` CLI flag and you can add or remove profiles from `~/.config/rv/config.toml`).
-NOTE: Deepseek R1 was also tested and it produced high-quality reports, while cheaper OpenAI models like `gpt-4o` fail on complex commits.
+The current suggested models is `deepseek/deepseek-r1-distill-qwen-32b` (for the `default` profile) and `deepseek/deepseek-r1` (for the `think` profile) for more intensive tasks.  
+You can switch between different profiles using the `-l` CLI flag and you can add or remove profiles from `~/.config/rv/config.toml`.  
 
 ## Future work
 
 Milestones planned for the v1.0.0:
 - custom prompt support
-- GitHub pull requests
 
 Milestones planned for the future:
 - *chat tool* for turning the review into a chatbot-like assistant **[expected for v1.1.0]**
 - *fix tool* for producing and applying fixes directly from the review **[expected for v1.2.0]**
 - full project context support (indexed references to other code or text files and full project reviews) **[expected for v1.3.0]**
 - *text mode* for reviewing content and style of natural language documents, with support for TXT, MarkDown, LaTex.
-- markdown rendering with external tools (ex. [glow](https://github.com/charmbracelet/glow) )
+- markdown rendering with external tools (ex. [glow](https://github.com/charmbracelet/glow))
 - ollama support for local inference
 - support for other cloud LLM providers
 
