@@ -52,12 +52,17 @@ You can switch between different profiles using the `-l` CLI flag and you can ad
 
 Milestones planned for the v1.0.0:
 - custom prompt support
+- *chat tool* for turning the review into a chatbot-like assistant
+- support for different context files
 
 Milestones planned for the future:
-- *chat tool* for turning the review into a chatbot-like assistant **[expected for v1.1.0]**
-- *fix tool* for producing and applying fixes directly from the review **[expected for v1.2.0]**
-- full project context support (indexed references to other code or text files and full project reviews) **[expected for v1.3.0]**
+- integration with `ast-grep`
+- ability to add context sources from the *chat tool*
+- ability to add context sources from `.rv_*` project files
+- ability to load PDF files as context sources (useful for documentation, specifications, etc)
+- *fix tool* for producing and applying fixes directly from the review
 - *text mode* for reviewing content and style of natural language documents, with support for TXT, MarkDown, LaTex.
+- full project context support (indexed references to other code or text files and full project reviews)
 - markdown rendering with external tools (ex. [glow](https://github.com/charmbracelet/glow))
 - ollama support for local inference
 - support for other cloud LLM providers

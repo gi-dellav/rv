@@ -7,11 +7,7 @@ use crate::llm::defs::LLMProvider;
 
 pub fn create_llm_provider(config: LLMConfig) -> Box<dyn LLMProvider> {
     match config.provider {
-        OpenAIProvider::OpenAI => {
-            Box::new(openai::OpenAIClient::from_config(config))
-        }
-        OpenAIProvider::OpenRouter => {
-            Box::new(openrouter::OpenRouterClient::from_config(config))
-        }
+        OpenAIProvider::OpenAI => Box::new(openai::OpenAIClient::from_config(config)),
+        OpenAIProvider::OpenRouter => Box::new(openrouter::OpenRouterClient::from_config(config)),
     }
 }

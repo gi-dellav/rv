@@ -1,9 +1,9 @@
 use crate::config::LLMConfig;
 use crate::llm::defs::LLMProvider;
 use anyhow::Result;
-use rig::providers::openai;
 use rig::agent::AgentBuilder;
 use rig::client::CompletionClient;
+use rig::providers::openai;
 use rig::streaming::StreamingPrompt;
 
 pub struct OpenAIClient {
@@ -23,10 +23,8 @@ impl OpenAIClient {
         let client: openai::Client = openai::Client::new(&self.api_key)?;
 
         let model = client.completion_model(&self.model);
-        
-        let agent = AgentBuilder::new(model)
-            .preamble(sys_prompt)
-            .build();
+
+        let agent = AgentBuilder::new(model).preamble(sys_prompt).build();
 
         let mut stream = agent.stream_prompt(review_prompt).await;
         let res = rig::agent::stream_to_stdout(&mut stream).await?;
@@ -43,7 +41,8 @@ impl LLMProvider for OpenAIClient {
 
     fn stream_request_stdout(&self, sys_prompt: String, review_prompt: String) -> Result<String> {
         tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(self.stream_chat(&sys_prompt, &review_prompt))
+            tokio::runtime::Handle::current()
+                .block_on(self.stream_chat(&sys_prompt, &review_prompt))
         })
     }
 }

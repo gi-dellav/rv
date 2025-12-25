@@ -1,9 +1,9 @@
 pub mod config;
 pub mod git_helpers;
 pub mod github;
+pub mod llm;
 pub mod review;
 pub mod term_helpers;
-pub mod llm;
 
 use clap::Parser;
 use std::path::PathBuf;
@@ -59,7 +59,9 @@ async fn main() {
     let raw_mode = args.raw.unwrap_or(false);
 
     if raw_mode {
-        if let Err(e) = review::raw_review(rvconfig, args.llm, args.file, args.dir, args.recursive).await {
+        if let Err(e) =
+            review::raw_review(rvconfig, args.llm, args.file, args.dir, args.recursive).await
+        {
             eprintln!("Error during raw review: {e}");
             std::process::exit(1);
         }
@@ -81,7 +83,9 @@ async fn main() {
             args.branch_mode,
             args.pr,
             args.log_xml_structure,
-        ).await {
+        )
+        .await
+        {
             eprintln!("Error during code review: {e}");
             std::process::exit(1);
         }

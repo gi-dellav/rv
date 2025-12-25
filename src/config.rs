@@ -147,6 +147,7 @@ pub struct LLMConfig {
     pub provider: OpenAIProvider,
     #[serde(default = "default_model_id")]
     pub model_id: String,
+    // TODO: Make api_key optional, in order to allow loading from the environment variable
     #[serde(default = "default_api_key")]
     pub api_key: String,
 
@@ -156,6 +157,16 @@ pub struct LLMConfig {
 
     #[serde(default)]
     pub custom_prompt: Option<CustomPrompt>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ProjectContextFiles {
+    files: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ProjectGuidelinesFiles {
+    files: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -170,17 +181,43 @@ pub struct RvConfig {
     pub default_llm_config: String,
     #[serde(default = "default_branch_mode")]
     pub default_branch_mode: BranchAgainst,
-    #[serde(default = "default_load_readme")]
-    pub load_readme: bool,
-    #[serde(default = "default_load_rv_context")]
-    pub load_rv_context: bool,
-    #[serde(default = "default_load_rv_guidelines")]
-    pub load_rv_guidelines: bool,
-    #[serde(default = "default_load_agents_md")]
-    pub load_agents_md: bool,
+
+    #[serde(default)]
+    pub project_context_files: ProjectContextFiles,
+    #[serde(default)]
+    pub project_guidelines_files: ProjectGuidelinesFiles,
 }
 
 // -----------------------------------
+
+impl Default for ProjectContextFiles {
+    fn default() -> Self {
+        ProjectContextFiles {
+            files: vec![
+                String::from(".rv_context"),
+                String::from("README.md"),
+                String::from("Cargo.toml"),
+                String::from("package.json"),
+                String::from("pyproject.toml"),
+                String::from("requirements.txt"),
+            ],
+        }
+    }
+}
+impl Default for ProjectGuidelinesFiles {
+    fn default() -> Self {
+        ProjectGuidelinesFiles {
+            files: vec![
+                String::from(".rv_guidelines"),
+                String::from("CONTRIBUTING.md"),
+                String::from("STYLEGUIDE.md"),
+                String::from("CODE_STYLE.md"),
+                String::from("SECURITY.md"),
+                String::from("AGENTS.md"),
+            ],
+        }
+    }
+}
 
 impl Default for DiffProfile {
     fn default() -> Self {
@@ -190,8 +227,6 @@ impl Default for DiffProfile {
         }
     }
 }
-
-// test
 
 impl Default for LLMConfig {
     fn default() -> Self {
@@ -216,10 +251,8 @@ impl Default for RvConfig {
             llm_configs,
             default_llm_config: String::from("default"),
             default_branch_mode: BranchAgainst::Main,
-            load_readme: true,
-            load_rv_context: true,
-            load_rv_guidelines: true,
-            load_agents_md: true,
+            project_context_files: ProjectContextFiles::default(),
+            project_guidelines_files: ProjectGuidelinesFiles::default(),
         }
     }
 }
@@ -277,7 +310,6 @@ impl Default for OpenAIProvider {
         OpenAIProvider::OpenRouter
     }
 }
-
 
 /// Enum to indicate a certain standard file used for providing extra context
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
