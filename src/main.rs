@@ -1,9 +1,9 @@
 pub mod config;
 pub mod git_helpers;
 pub mod github;
-pub mod llm;
 pub mod review;
 pub mod term_helpers;
+pub mod llm;
 
 use clap::Parser;
 use std::path::PathBuf;
@@ -52,13 +52,17 @@ struct Args {
     raw: Option<bool>,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = Args::parse();
     let rvconfig = config::RvConfig::load_default().unwrap();
     let raw_mode = args.raw.unwrap_or(false);
 
     if raw_mode {
-        review::raw_review(rvconfig, args.llm, args.file, args.dir, args.recursive);
+        if let Err(e) = review::raw_review(rvconfig, args.llm, args.file, args.dir, args.recursive).await {
+            eprintln!("Error during raw review: {e}");
+            std::process::exit(1);
+        }
     } else {
         // Check that only 0 or 1 arguments between commit, branch or pr are used
         // In order to make it smaller, it turns boolean values to u8 and sums them in order to get the number of enabled args
@@ -77,7 +81,7 @@ fn main() {
             args.branch_mode,
             args.pr,
             args.log_xml_structure,
-        ) {
+        ).await {
             eprintln!("Error during code review: {e}");
             std::process::exit(1);
         }

@@ -3,13 +3,12 @@ use crate::config::{ContextFile, RvConfig};
 use crate::git_helpers;
 use crate::git_helpers::ExpandedCommit;
 use crate::github;
-use crate::llm::{defs::LLMProvider, openai::OpenAIClient};
 use crate::term_helpers;
 
 use anyhow::{Context, Result};
 
+use crate::llm::create_llm_provider;
 use std::path::PathBuf;
-use std::process;
 
 const SYSTEM_PROMPT: &str = r#"
 You are a senior software engineer and professional code reviewer.
@@ -72,11 +71,12 @@ const CUSTOM_GUIDELINES_INTRO: &str = r#"
 PROJECT GUIDELINES
 "#;
 
-fn read_context_files(context_file: ContextFile) -> Result<String, std::io::Error> {
+fn read_context_files(context_file: ContextFile) -> Result<String> {
     let filename = match context_file {
         ContextFile::Readme => "README.md",
         ContextFile::RvContext => ".rv_context",
         ContextFile::RvGuidelines => ".rv_guidelines",
+        ContextFile::AgentsMd => "AGENTS.md",
     };
 
     match std::fs::read_to_string(filename) {
@@ -85,12 +85,12 @@ fn read_context_files(context_file: ContextFile) -> Result<String, std::io::Erro
             if e.kind() == std::io::ErrorKind::NotFound {
                 Ok(String::new()) // Return empty string if file doesn't exist
             } else {
-                Err(e)
+                Err(e.into())
             }
         }
     }
 }
-pub fn pack_prompt_with_context(rvconfig: &RvConfig) -> String {
+pub fn pack_prompt_with_context(rvconfig: &RvConfig) -> Result<String> {
     let mut system_prompt = SYSTEM_PROMPT.to_string();
 
     // Handle custom guidelines
@@ -101,6 +101,7 @@ pub fn pack_prompt_with_context(rvconfig: &RvConfig) -> String {
                 guidelines_content.push_str(CUSTOM_GUIDELINES_INTRO);
                 guidelines_content.push_str(&content);
             }
+            Err(e) => return Err(e),
             _ => {}
         }
     }
@@ -113,26 +114,26 @@ pub fn pack_prompt_with_context(rvconfig: &RvConfig) -> String {
             Ok(content) if !content.trim().is_empty() => {
                 custom_prompt_content.push_str(&content);
             }
+            Err(e) => return Err(e),
             _ => {}
         }
     }
     system_prompt = system_prompt.replace("{{custom_prompt}}", &custom_prompt_content);
 
-    system_prompt
+    Ok(system_prompt)
 }
 
-pub fn raw_review(
+pub async fn raw_review(
     rvconfig: RvConfig,
     llm_selection: Option<String>,
     file_path: Option<PathBuf>,
     dir_path: Option<PathBuf>,
     recursive: Option<bool>,
-) {
-    if file_path.is_some() {
-        let path = file_path.unwrap();
+) -> Result<()> {
+    if let Some(path) = file_path {
         if !path.exists() {
             println!("[ERROR] File does not exist: {path:?}");
-            return;
+            return Ok(());
         }
 
         // Create ExpandedCommit structure for single file
@@ -152,17 +153,17 @@ pub fn raw_review(
                 }
 
                 // Process the review
-                process_review(&rvconfig, llm_selection, expcommit, None);
+                process_review(&rvconfig, llm_selection, expcommit, None).await?;
             }
             Err(e) => {
                 println!("[ERROR] Failed to read file: {e}");
+                return Err(e.into());
             }
         }
-    } else if dir_path.is_some() {
-        let path = dir_path.unwrap();
+    } else if let Some(path) = dir_path {
         if !path.exists() || !path.is_dir() {
             println!("[ERROR] Directory does not exist or is not a directory: {path:?}");
-            return;
+            return Ok(());
         }
 
         let recursive = recursive.unwrap_or(false);
@@ -171,12 +172,12 @@ pub fn raw_review(
         let mut files = Vec::new();
         if let Err(e) = collect_files(&path, recursive, &mut files) {
             println!("[ERROR] Failed to collect files: {e}");
-            return;
+            return Err(e.into());
         }
 
         if files.is_empty() {
             println!("[ERROR] No files found in directory");
-            return;
+            return Ok(());
         }
 
         // Create ExpandedCommit structure for directory
@@ -201,12 +202,13 @@ pub fn raw_review(
         }
 
         expcommit.diffs = Some(diffs);
-        process_review(&rvconfig, llm_selection, expcommit, None);
+        process_review(&rvconfig, llm_selection, expcommit, None).await?;
     } else {
         println!(
             "[ERROR] In order to use the RAW mode, you need to specify a --file or a --dir input"
         );
     }
+    Ok(())
 }
 
 fn collect_files(
@@ -229,12 +231,12 @@ fn collect_files(
     Ok(())
 }
 
-fn process_review(
+async fn process_review(
     rvconfig: &RvConfig,
     llm_selection: Option<String>,
     expcommit: ExpandedCommit,
     log_xml_structure: Option<bool>,
-) {
+) -> Result<()> {
     // Convert to structured format
     let review_prompt = expcommit.get_xml_structure(rvconfig.diff_profile);
 
@@ -244,49 +246,31 @@ fn process_review(
         println!("  -------  ");
     }
 
-    // Select correct LLM configuration and setup OpenAIClient
+    // Select correct LLM configuration
     let llm_configuration_default = rvconfig.clone().default_llm_config;
     let mut llm_configuration_key = llm_configuration_default;
     let llm_configs = rvconfig.clone().get_llm_configs();
-    if llm_selection.is_some() {
-        llm_configuration_key = llm_selection.unwrap();
+    if let Some(selection) = llm_selection {
+        llm_configuration_key = selection;
     } else if !(llm_configs.contains_key(&llm_configuration_key.clone())) {
         println!(
             "[ERROR] No LLM configuration specified or wrong configuration specified; either create a `default`-named configuration or use the --llm parameter to change the configuration used."
         );
-        process::exit(1);
+        std::process::exit(1);
     }
     let llm_configuration = match llm_configs.get(&llm_configuration_key.clone()) {
         Some(config) => config,
         None => {
             println!("[ERROR] Failed to load selected LLM configuration");
-            process::exit(1);
+            std::process::exit(1);
         }
     };
 
-    // Check if the API key is the placeholder or empty, and if it's OpenRouter, check for environment variable
-    if llm_configuration.api_key == "[insert api key here]" || llm_configuration.api_key.is_empty()
-    {
-        if matches!(
-            llm_configuration.provider,
-            crate::config::OpenAIProvider::OpenRouter
-        ) {
-            if std::env::var("OPENROUTER_API_KEY").is_err() {
-                println!(
-                    "[ERROR] Insert compatible API key inside `~/.config/rv/config.toml` or set OPENROUTER_API_KEY environment variable"
-                );
-                process::exit(1);
-            }
-        } else {
-            println!("[ERROR] Insert compatible API key inside `~/.config/rv/config.toml`");
-            process::exit(1);
-        }
-    }
-
-    let openai_client = OpenAIClient::from_config(llm_configuration.clone());
+    // Resolve API key using the new method
+    let api_key = llm_configuration.resolve_api_key()?;
 
     // Build system prompt with context
-    let system_prompt = pack_prompt_with_context(rvconfig);
+    let system_prompt = pack_prompt_with_context(rvconfig)?;
 
     // Add README to the review prompt if configured
     let mut enhanced_review_prompt = review_prompt;
@@ -297,14 +281,36 @@ fn process_review(
                 enhanced_review_prompt.push_str(&readme_content);
                 enhanced_review_prompt.push_str("\n</info>\n");
             }
+            Err(e) => return Err(e),
             _ => {}
         }
     }
 
-    openai_client.stream_request_stdout(system_prompt, enhanced_review_prompt);
+    // Add AGENTS.md to the review prompt if configured
+    if rvconfig.load_agents_md {
+        match read_context_files(ContextFile::AgentsMd) {
+            Ok(agents_content) if !agents_content.trim().is_empty() => {
+                enhanced_review_prompt.push_str("\n<info AGENTS>\n");
+                enhanced_review_prompt.push_str(&agents_content);
+                enhanced_review_prompt.push_str("\n</info>\n");
+            }
+            Err(e) => return Err(e),
+            _ => {}
+        }
+    }
+
+    // Create LLM provider using factory pattern
+    let mut llm_config_with_key = llm_configuration.clone();
+    llm_config_with_key.api_key = api_key;
+    let client = create_llm_provider(llm_config_with_key);
+
+    // Stream the response to stdout
+    client.stream_request_stdout(system_prompt, enhanced_review_prompt)?;
+
+    Ok(())
 }
 
-pub fn git_review(
+pub async fn git_review(
     rvconfig: RvConfig,
     llm_selection: Option<String>,
     commit: Option<String>,
@@ -377,7 +383,7 @@ pub fn git_review(
     }
 
     if let Some(expanded) = expcommit {
-        process_review(&rvconfig, llm_selection, expanded, log_xml_structure);
+        process_review(&rvconfig, llm_selection, expanded, log_xml_structure).await?;
     } else {
         println!("[ERROR] Git integrations failed. Are you running `rv` inside a Git repository?");
         println!("      | [LOG] {expcommit:?}");

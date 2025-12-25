@@ -70,7 +70,7 @@ fn default_llm_configs() -> Vec<LLMConfig> {
     vec![
         LLMConfig {
             configuration_name: String::from("default"),
-            provider: default_openai_provider(),
+            provider: OpenAIProvider::OpenRouter,
             model_id: String::from("deepseek/deepseek-r1-distill-qwen-32b"),
             api_key: default_api_key(),
             allow_reasoning: true,
@@ -78,8 +78,16 @@ fn default_llm_configs() -> Vec<LLMConfig> {
         },
         LLMConfig {
             configuration_name: String::from("think"),
-            provider: default_openai_provider(),
+            provider: OpenAIProvider::OpenRouter,
             model_id: String::from("deepseek/deepseek-r1:online"),
+            api_key: default_api_key(),
+            allow_reasoning: true,
+            custom_prompt: None,
+        },
+        LLMConfig {
+            configuration_name: String::from("openai"),
+            provider: OpenAIProvider::OpenAI,
+            model_id: String::from("gpt-4"),
             api_key: default_api_key(),
             allow_reasoning: true,
             custom_prompt: None,
@@ -104,6 +112,10 @@ fn default_load_rv_context() -> bool {
 }
 
 fn default_load_rv_guidelines() -> bool {
+    true
+}
+
+fn default_load_agents_md() -> bool {
     true
 }
 
@@ -164,6 +176,8 @@ pub struct RvConfig {
     pub load_rv_context: bool,
     #[serde(default = "default_load_rv_guidelines")]
     pub load_rv_guidelines: bool,
+    #[serde(default = "default_load_agents_md")]
+    pub load_agents_md: bool,
 }
 
 // -----------------------------------
@@ -205,6 +219,7 @@ impl Default for RvConfig {
             load_readme: true,
             load_rv_context: true,
             load_rv_guidelines: true,
+            load_agents_md: true,
         }
     }
 }
@@ -263,14 +278,6 @@ impl Default for OpenAIProvider {
     }
 }
 
-impl OpenAIProvider {
-    pub fn get_endpoint(self) -> String {
-        match self {
-            OpenAIProvider::OpenAI => String::from("https://api.openai.com/v1"),
-            OpenAIProvider::OpenRouter => String::from("https://openrouter.ai/api/v1"),
-        }
-    }
-}
 
 /// Enum to indicate a certain standard file used for providing extra context
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
@@ -278,6 +285,7 @@ pub enum ContextFile {
     Readme,
     RvContext,
     RvGuidelines,
+    AgentsMd,
 }
 
 /// Enum to control what to compare a branch against
@@ -292,5 +300,28 @@ pub enum BranchAgainst {
 impl Default for BranchAgainst {
     fn default() -> Self {
         BranchAgainst::Main
+    }
+}
+
+impl LLMConfig {
+    pub fn resolve_api_key(&self) -> anyhow::Result<String> {
+        if self.api_key == "[insert api key here]" || self.api_key.is_empty() {
+            match self.provider {
+                OpenAIProvider::OpenRouter => {
+                    std::env::var("OPENROUTER_API_KEY").map_err(|_| {
+                        anyhow::anyhow!(
+                            "[ERROR] Insert compatible API key inside `~/.config/rv/config.toml` or set OPENROUTER_API_KEY environment variable"
+                        )
+                    })
+                }
+                OpenAIProvider::OpenAI => {
+                    Err(anyhow::anyhow!(
+                        "[ERROR] Insert compatible API key inside `~/.config/rv/config.toml`"
+                    ))
+                }
+            }
+        } else {
+            Ok(self.api_key.clone())
+        }
     }
 }
