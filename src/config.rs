@@ -84,14 +84,6 @@ fn default_llm_configs() -> Vec<LLMConfig> {
             allow_reasoning: true,
             custom_prompt: None,
         },
-        LLMConfig {
-            configuration_name: String::from("openai"),
-            provider: OpenAIProvider::OpenAI,
-            model_id: String::from("gpt-4"),
-            api_key: default_api_key(),
-            allow_reasoning: true,
-            custom_prompt: None,
-        },
     ]
 }
 
