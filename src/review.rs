@@ -1,5 +1,5 @@
 use crate::config::BranchAgainst;
-use crate::config::{ContextFile, RvConfig};
+use crate::config::RvConfig;
 use crate::git_helpers;
 use crate::git_helpers::ExpandedCommit;
 use crate::github;
@@ -54,71 +54,56 @@ KEY RULES (must obey)
   <source>.
 - Assume latest stable toolchain unless told otherwise.
 
-{{custom_prompt}}
-{{custom_guidelines}}
-
 INPUT FORMAT (what I'll send next)
-- <diff FILE>   : the file diff to review
-- <source FILE> : the full source file content
-- <info TYPE>   : extra info (README or CONTEXT)
+- <context FILE>   : text file containing context about the project
+- <guideline FILE> : text file containing guidelines and instructions
+- <diff FILE>      : git diff of the file to review
+- <source FILE>    : text file to be reviewed
 
 Now review the input I will provide next. Produce the review using the
 exact structure and rules above.
 
 
-"#;
-const CUSTOM_GUIDELINES_INTRO: &str = r#"
-PROJECT GUIDELINES
+=============================
+
 "#;
 
-fn read_context_files(context_file: ContextFile) -> Result<String> {
-    let filename = match context_file {
-        ContextFile::Readme => "README.md",
-        ContextFile::RvContext => ".rv_context",
-        ContextFile::RvGuidelines => ".rv_guidelines",
-        ContextFile::AgentsMd => "AGENTS.md",
-    };
-
+fn read_file(filename: &str) -> Option<String> {
+    // TODO Load files from project's root directory not current working directory
     match std::fs::read_to_string(filename) {
-        Ok(content) => Ok(content),
-        Err(e) => {
-            if e.kind() == std::io::ErrorKind::NotFound {
-                Ok(String::new()) // Return empty string if file doesn't exist
-            } else {
-                Err(e.into())
-            }
-        }
+        Ok(content) => Some(content),
+        Err(_) => None,
     }
 }
-pub fn pack_prompt_with_context(rvconfig: &RvConfig) -> Result<String> {
+/// Add context, guidelines and custom instructions to the LLM prompt
+pub fn pack_prompt(rvconfig: &RvConfig) -> Result<String> {
     let mut system_prompt = SYSTEM_PROMPT.to_string();
+    let mut suffix_context: String = String::new();
 
-    // Handle custom guidelines
-    let mut guidelines_content = String::new();
-    if rvconfig.load_rv_guidelines {
-        match read_context_files(ContextFile::RvGuidelines) {
-            Ok(content) if !content.trim().is_empty() => {
-                guidelines_content.push_str(CUSTOM_GUIDELINES_INTRO);
-                guidelines_content.push_str(&content);
-            }
-            Err(e) => return Err(e),
-            _ => {}
+    // Handle project guidelines files
+    for f in rvconfig.project_guidelines_files.files.clone() {
+        let content = read_file(&f);
+        if content.is_some() {
+            suffix_context.push_str(&format!("<guideline {f}>"));
+            suffix_context.push_str(&content.unwrap_or_default());
+            suffix_context.push_str("</guideline>");
         }
     }
-    system_prompt = system_prompt.replace("{{custom_guidelines}}", &guidelines_content);
 
-    // Handle custom prompt
-    let mut custom_prompt_content = String::new();
-    if rvconfig.load_rv_context {
-        match read_context_files(ContextFile::RvContext) {
-            Ok(content) if !content.trim().is_empty() => {
-                custom_prompt_content.push_str(&content);
-            }
-            Err(e) => return Err(e),
-            _ => {}
+    // Handle project context files
+    for f in rvconfig.project_context_files.files.clone() {
+        let content = read_file(&f);
+        if content.is_some() {
+            suffix_context.push_str(&format!("<context {f}>"));
+            suffix_context.push_str(&content.unwrap_or_default());
+            suffix_context.push_str("</context>");
         }
     }
-    system_prompt = system_prompt.replace("{{custom_prompt}}", &custom_prompt_content);
+
+    // Handle custom prompts
+    // TODO Implement custom prompts support
+
+    system_prompt.push_str(&suffix_context);
 
     Ok(system_prompt)
 }
@@ -266,38 +251,8 @@ async fn process_review(
         }
     };
 
-    // Resolve API key using the new method
     let api_key = llm_configuration.resolve_api_key()?;
-
-    // Build system prompt with context
-    let system_prompt = pack_prompt_with_context(rvconfig)?;
-
-    // Add README to the review prompt if configured
-    let mut enhanced_review_prompt = review_prompt;
-    if rvconfig.load_readme {
-        match read_context_files(ContextFile::Readme) {
-            Ok(readme_content) if !readme_content.trim().is_empty() => {
-                enhanced_review_prompt.push_str("\n<info README>\n");
-                enhanced_review_prompt.push_str(&readme_content);
-                enhanced_review_prompt.push_str("\n</info>\n");
-            }
-            Err(e) => return Err(e),
-            _ => {}
-        }
-    }
-
-    // Add AGENTS.md to the review prompt if configured
-    if rvconfig.load_agents_md {
-        match read_context_files(ContextFile::AgentsMd) {
-            Ok(agents_content) if !agents_content.trim().is_empty() => {
-                enhanced_review_prompt.push_str("\n<info AGENTS>\n");
-                enhanced_review_prompt.push_str(&agents_content);
-                enhanced_review_prompt.push_str("\n</info>\n");
-            }
-            Err(e) => return Err(e),
-            _ => {}
-        }
-    }
+    let system_prompt = pack_prompt(rvconfig)?;
 
     // Create LLM provider using factory pattern
     let mut llm_config_with_key = llm_configuration.clone();
@@ -305,7 +260,7 @@ async fn process_review(
     let client = create_llm_provider(llm_config_with_key);
 
     // Stream the response to stdout
-    client.stream_request_stdout(system_prompt, enhanced_review_prompt)?;
+    client.stream_request_stdout(system_prompt, review_prompt)?;
 
     Ok(())
 }

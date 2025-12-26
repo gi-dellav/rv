@@ -102,23 +102,6 @@ fn default_default_llm_config() -> String {
 fn default_branch_mode() -> BranchAgainst {
     BranchAgainst::Main
 }
-
-fn default_load_readme() -> bool {
-    true
-}
-
-fn default_load_rv_context() -> bool {
-    true
-}
-
-fn default_load_rv_guidelines() -> bool {
-    true
-}
-
-fn default_load_agents_md() -> bool {
-    true
-}
-
 // ----------------------------------------------------------------------------
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
@@ -161,12 +144,12 @@ pub struct LLMConfig {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ProjectContextFiles {
-    files: Vec<String>,
+    pub files: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ProjectGuidelinesFiles {
-    files: Vec<String>,
+    pub files: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -181,7 +164,6 @@ pub struct RvConfig {
     pub default_llm_config: String,
     #[serde(default = "default_branch_mode")]
     pub default_branch_mode: BranchAgainst,
-
     #[serde(default)]
     pub project_context_files: ProjectContextFiles,
     #[serde(default)]
@@ -309,15 +291,6 @@ impl Default for OpenAIProvider {
     fn default() -> Self {
         OpenAIProvider::OpenRouter
     }
-}
-
-/// Enum to indicate a certain standard file used for providing extra context
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
-pub enum ContextFile {
-    Readme,
-    RvContext,
-    RvGuidelines,
-    AgentsMd,
 }
 
 /// Enum to control what to compare a branch against
