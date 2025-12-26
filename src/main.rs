@@ -23,33 +23,37 @@ struct Args {
     /// Git branch to review
     branch: Option<String>,
 
-    #[arg(short, long, value_enum)]
+    #[arg(long, value_enum)]
     /// Git branch review mode
     branch_mode: Option<config::BranchAgainst>,
 
     #[arg(short, long)]
     /// Github pull request to review
-    pr: Option<String>, //TODO
+    pr: Option<String>,
 
-    #[arg(long)]
+    #[arg(long = "log_xml", action)]
     /// Print out XML structure of the code review.
     log_xml_structure: Option<bool>,
 
-    #[arg(long, value_hint = clap::ValueHint::FilePath)]
+    #[arg(short, long, value_hint = clap::ValueHint::FilePath)]
     /// Specific file to review
     file: Option<PathBuf>,
 
-    #[arg(long, value_hint = clap::ValueHint::FilePath)]
+    #[arg(short, long, value_hint = clap::ValueHint::FilePath)]
     /// Specific directory to review
     dir: Option<PathBuf>,
 
-    #[arg(short, long)]
+    #[arg(short, long, action)]
     /// Review all subfiles, used with `--dir`
     recursive: Option<bool>,
 
-    #[arg(long)]
+    #[arg(short = 'R', long)]
     /// Review source code without interfacing with Git
     raw: Option<bool>,
+
+    #[arg(short = 'P', long, action)]
+    /// Output as raw text, allowing for stdout pipes
+    pipe: bool,
 }
 
 #[tokio::main]

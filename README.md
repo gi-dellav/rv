@@ -30,35 +30,36 @@ NOTE: *rv* has been only tested on Linux; if possible try it on MacOS and Window
 
 ## How to setup APIs
 
-We reccomend using [OpenRouter](https://openrouter.ai) as it allows to use different models, connect to different APIs (such as Azure, Anthropic, Cloudflare, Google and Mistral), and access some free models.  
-Here are the links for [creating an account](https://openrouter.ai/), [managing API keys](https://openrouter.ai/settings/keys), [connecting other provider](https://openrouter.ai/settings/integrations) and [viewing all free models](https://openrouter.ai/models?max_price=0).  
-Once you have the API key, you can insert it in your configuration file (on Linux, `~/.config/rv/config.toml`).    
+We reccomend using [OpenRouter](https://openrouter.ai) as it allows to use different models, connect to different APIs (such as Azure, Anthropic, Cloudflare, Google and Mistral), and access some free models.
+Here are the links for [creating an account](https://openrouter.ai/), [managing API keys](https://openrouter.ai/settings/keys), [connecting other provider](https://openrouter.ai/settings/integrations) and [viewing all free models](https://openrouter.ai/models?max_price=0).
+Once you have the API key, you can insert it in your configuration file (on Linux, `~/.config/rv/config.toml`).
 
 ## How to use
 
-For reviewing staged changes or the last commit: `rv`  
-For reviewing a specific commit: `rv -c [commit]`  
-For reviewing a specific branch: `rv -b [branch]`  
-For reviewing a Github PR: `rv -p [pr-id]` (Requires `gh` to be installed)  
-For switching to a different LLM profile: `rv -l [llm]`  
-For reviewing files without the Git integration: `rv --raw`  
+For reviewing staged changes or the last commit: `rv`
+For reviewing a specific commit: `rv -c [commit]`
+For reviewing a specific branch: `rv -b [branch]`
+For reviewing a Github PR: `rv -p [pr-id]` (Requires `gh` to be installed)
+For switching to a different LLM profile: `rv -l [llm]`
+For reviewing files without the Git integration: `rv --raw`
 
 ## Model profiles
 
-The current suggested models is `deepseek/deepseek-r1-distill-qwen-32b` (for the `default` profile) and `deepseek/deepseek-r1` (for the `think` profile) for more intensive tasks.  
-You can switch between different profiles using the `-l` CLI flag and you can add or remove profiles from `~/.config/rv/config.toml`.  
+The current suggested models is `deepseek/deepseek-r1-distill-qwen-32b` (for the `default` profile) and `deepseek/deepseek-r1` (for the `think` profile) for more intensive tasks.
+You can switch between different profiles using the `-l` CLI flag and you can add or remove profiles from `~/.config/rv/config.toml`.
 
 ## Future work
 
 Milestones planned for the v1.0.0:
 - custom prompt support
 - *chat tool* for turning the review into a chatbot-like assistant
-- support for different context files
+- `--pipe` for outputting the result in raw text format
 
 Milestones planned for the future:
 - integration with `ast-grep`
 - ability to add context sources from the *chat tool*
 - ability to add context sources from `.rv_*` project files
+- ability to use regex rules (with `$any[]`, `$all[]` and `$none[]`) inside of project files and custom prompts
 - ability to load PDF files as context sources (useful for documentation, specifications, etc)
 - *fix tool* for producing and applying fixes directly from the review
 - *text mode* for reviewing content and style of natural language documents, with support for TXT, MarkDown, LaTex.
