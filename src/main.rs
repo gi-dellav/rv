@@ -33,7 +33,7 @@ struct Args {
 
     #[arg(long = "log_xml", action)]
     /// Print out XML structure of the code review.
-    log_xml_structure: Option<bool>,
+    log_xml_structure: bool,
 
     #[arg(short, long, value_hint = clap::ValueHint::FilePath)]
     /// Specific file to review
@@ -45,11 +45,11 @@ struct Args {
 
     #[arg(short, long, action)]
     /// Review all subfiles, used with `--dir`
-    recursive: Option<bool>,
+    recursive: bool,
 
     #[arg(short = 'R', long)]
     /// Review source code without interfacing with Git
-    raw: Option<bool>,
+    raw: bool,
 
     #[arg(short = 'P', long, action)]
     /// Output as raw text, allowing for stdout pipes
@@ -60,11 +60,10 @@ struct Args {
 async fn main() {
     let args = Args::parse();
     let rvconfig = config::RvConfig::load_default().unwrap();
-    let raw_mode = args.raw.unwrap_or(false);
 
-    if raw_mode {
+    if args.raw {
         if let Err(e) =
-            review::raw_review(rvconfig, args.llm, args.file, args.dir, args.recursive).await
+            review::raw_review(rvconfig, args.llm, args.file, args.dir, Some(args.recursive)).await
         {
             eprintln!("Error during raw review: {e}");
             std::process::exit(1);
@@ -86,7 +85,7 @@ async fn main() {
             args.branch,
             args.branch_mode,
             args.pr,
-            args.log_xml_structure,
+            Some(args.log_xml_structure),
         )
         .await
         {
