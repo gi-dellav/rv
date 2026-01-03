@@ -1,5 +1,4 @@
-use crate::config::BranchAgainst;
-use crate::config::RvConfig;
+use crate::config::{BranchAgainst, CustomPrompt, LLMConfig, RvConfig};
 use crate::git_helpers;
 use crate::git_helpers::ExpandedCommit;
 use crate::github;
@@ -272,7 +271,7 @@ async fn process_review(
     };
 
     let api_key = llm_configuration.resolve_api_key()?;
-    let system_prompt = pack_prompt(rvconfig)?;
+    let system_prompt = pack_prompt(rvconfig, Some(llm_configuration))?;
 
     // Create LLM provider using factory pattern
     let mut llm_config_with_key = llm_configuration.clone();
