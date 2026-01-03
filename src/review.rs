@@ -73,15 +73,9 @@ fn read_file(filename: &str) -> Option<String> {
         Ok(repo) => repo,
         Err(_) => return None,
     };
-    let workdir = match repo.workdir() {
-        Some(wd) => wd,
-        None => return None,
-    };
+    let workdir = repo.workdir()?;
     let full_path = workdir.join(filename);
-    match std::fs::read_to_string(&full_path) {
-        Ok(content) => Some(content),
-        Err(_) => None,
-    }
+    std::fs::read_to_string(&full_path).ok()
 }
 /// Add context, guidelines and custom instructions to the LLM prompt
 pub fn pack_prompt(rvconfig: &RvConfig, llm_config: Option<&LLMConfig>) -> Result<String> {
@@ -109,8 +103,8 @@ pub fn pack_prompt(rvconfig: &RvConfig, llm_config: Option<&LLMConfig>) -> Resul
     }
 
     // Handle custom prompt from LLM config if provided
-    if let Some(config) = llm_config {
-        if let Some(custom_prompt) = &config.custom_prompt {
+    if let Some(config) = llm_config
+        && let Some(custom_prompt) = &config.custom_prompt {
             match custom_prompt {
                 CustomPrompt::Suffix(suffix) => {
                     suffix_context.push_str("<custom_prompt>");
@@ -126,7 +120,6 @@ pub fn pack_prompt(rvconfig: &RvConfig, llm_config: Option<&LLMConfig>) -> Resul
                 }
             }
         }
-    }
 
     system_prompt.push_str(&suffix_context);
 

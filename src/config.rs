@@ -67,16 +67,14 @@ fn default_allow_reasoning() -> bool {
 }
 
 fn default_llm_configs() -> Vec<LLMConfig> {
-    vec![
-        LLMConfig {
-            configuration_name: String::from("default"),
-            provider: OpenAIProvider::OpenRouter,
-            model_id: String::from("deepseek/deepseek-v3.2"),
-            api_key: default_api_key(),
-            allow_reasoning: true,
-            custom_prompt: None,
-        },
-    ]
+    vec![LLMConfig {
+        configuration_name: String::from("default"),
+        provider: OpenAIProvider::OpenRouter,
+        model_id: String::from("deepseek/deepseek-v3.2"),
+        api_key: default_api_key(),
+        allow_reasoning: true,
+        custom_prompt: None,
+    }]
 }
 
 fn default_default_llm_config() -> String {
@@ -265,31 +263,25 @@ impl RvConfig {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Default)]
 pub enum OpenAIProvider {
     OpenAI,
+    #[default]
     OpenRouter,
 }
 
-impl Default for OpenAIProvider {
-    fn default() -> Self {
-        OpenAIProvider::OpenRouter
-    }
-}
 
 /// Enum to control what to compare a branch against
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, ValueEnum)]
+#[derive(Default)]
 pub enum BranchAgainst {
     /// Compare branch against the current HEAD
     Current,
     /// Compare branch against the repository's `main`
+    #[default]
     Main,
 }
 
-impl Default for BranchAgainst {
-    fn default() -> Self {
-        BranchAgainst::Main
-    }
-}
 
 impl LLMConfig {
     pub fn resolve_api_key(&self) -> anyhow::Result<String> {

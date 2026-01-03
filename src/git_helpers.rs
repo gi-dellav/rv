@@ -2,7 +2,7 @@ use crate::config::{BranchAgainst, DiffProfile};
 use git2::Object;
 use git2::{BranchType, Commit, DiffFormat, DiffOptions, Error, Oid, Repository, Tree};
 use std::{
-    collections::{BTreeSet, HashMap},
+    collections::BTreeSet,
     env, fs,
     path::Path,
     path::PathBuf,
@@ -161,11 +161,10 @@ pub fn staged_diffs(diff_profile: DiffProfile) -> Result<ExpandedCommit, git2::E
     let mut filtered_patches = Vec::new();
     let mut filtered_touched = BTreeSet::new();
     for (patch, path) in patches.into_iter().zip(touched.into_iter()) {
-        if let Some(path_str) = path.to_str() {
-            if path_str.contains("Cargo.lock") {
+        if let Some(path_str) = path.to_str()
+            && path_str.contains("Cargo.lock") {
                 continue;
             }
-        }
         filtered_patches.push(patch);
         filtered_touched.insert(path);
     }
