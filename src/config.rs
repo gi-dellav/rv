@@ -55,7 +55,7 @@ fn default_openai_provider() -> OpenAIProvider {
 }
 
 fn default_model_id() -> String {
-    "deepseek/deepseek-r1-0528:free".to_string()
+    "deepseek/deepseek-v3.2".to_string()
 }
 
 fn default_api_key() -> String {
@@ -77,17 +77,9 @@ fn default_llm_configs() -> Vec<LLMConfig> {
             custom_prompt: None,
         },
         LLMConfig {
-            configuration_name: String::from("think-free"),
-            provider: OpenAIProvider::OpenRouter,
-            model_id: String::from("deepseek/deepseek-r1-0528:online"),
-            api_key: default_api_key(),
-            allow_reasoning: true,
-            custom_prompt: None,
-        },
-        LLMConfig {
             configuration_name: String::from("think"),
             provider: OpenAIProvider::OpenRouter,
-            model_id: String::from("deepseek/deepseek-v3.2"),
+            model_id: String::from("deepseek/deepseek-v3.2:online"),
             api_key: default_api_key(),
             allow_reasoning: true,
             custom_prompt: None,
