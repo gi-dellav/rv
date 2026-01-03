@@ -54,6 +54,14 @@ struct Args {
     #[arg(short = 'P', long, action)]
     /// Output as raw text, allowing for stdout pipes
     pipe: bool,
+
+    #[arg(short = 'C', long, action)]
+    /// Launch chat mode, skipping review generation
+    chat: bool,
+
+    #[arg(long, action)]
+    /// Force post-review actions menu (normally defined by config.toml)
+    actions_menu: bool,
 }
 
 #[tokio::main]

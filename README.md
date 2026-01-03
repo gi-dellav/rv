@@ -62,15 +62,17 @@ Milestones planned for the v1.0.0:
 
 Milestones planned for the future:
 - **integration with `ast-grep` for accessing source files outside of the current commit**
-- **ability to add context sources from the chat tool**
-- **ability to add context sources from `.rv_*` project files**
+- support for larger reviews by splitting into file-by-file review (requires `ast-grep` integration for checking source references)
+- **ability to add context sources from the chat tool or from project files**
 - ability to use regex rules (with `$any[]`, `$all[]` and `$none[]`) inside of project files and custom prompts
 - ability to load PDF files as context sources (useful for documentation, specifications, etc)
 - ***fix tool* for producing and applying fixes directly from the review**
+- unit test and docstring generation (requires *fix tool* implementation)
 - integration with git hooks
 - integration with language-specific CLI tools (ex. `cargo check`)
 - support for MCP servers
-- *text mode* for reviewing content and style of natural language documents, with support for TXT, MarkDown, LaTex.
+- expose as MCP server
+- *text mode* for reviewing content and style of natural language documents (ex. essays), with support for TXT, MarkDown, LaTex.
 - markdown rendering with external tools (ex. [glow](https://github.com/charmbracelet/glow))
 - ollama support for local inference
 - support for other cloud LLM providers

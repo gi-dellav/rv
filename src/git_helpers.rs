@@ -1,13 +1,7 @@
 use crate::config::{BranchAgainst, DiffProfile};
 use git2::Object;
 use git2::{BranchType, Commit, DiffFormat, DiffOptions, Error, Oid, Repository, Tree};
-use std::{
-    collections::BTreeSet,
-    env, fs,
-    path::Path,
-    path::PathBuf,
-    str,
-};
+use std::{collections::BTreeSet, env, fs, path::Path, path::PathBuf, str};
 
 /// Structure that allow to contain both the diff and the edited source file for commits or for staged edits
 #[derive(Clone, Debug)]
@@ -45,7 +39,6 @@ impl ExpandedCommit {
         let sources = self.sources.as_ref().ok_or("Sources are missing").unwrap();
 
         if diff_profile.report_diffs {
-            let mut diff_counter: usize = 0;
             let diffs = self.diffs.as_ref().ok_or("Diffs are missing").unwrap();
             for (diff_counter, diff_val) in diffs.iter().enumerate() {
                 // Open <diff NAME> tag
@@ -160,9 +153,10 @@ pub fn staged_diffs(diff_profile: DiffProfile) -> Result<ExpandedCommit, git2::E
     let mut filtered_touched = BTreeSet::new();
     for (patch, path) in patches.into_iter().zip(touched.into_iter()) {
         if let Some(path_str) = path.to_str()
-            && path_str.contains("Cargo.lock") {
-                continue;
-            }
+            && path_str.contains("Cargo.lock")
+        {
+            continue;
+        }
         filtered_patches.push(patch);
         filtered_touched.insert(path);
     }

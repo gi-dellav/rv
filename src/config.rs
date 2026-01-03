@@ -75,6 +75,7 @@ fn default_llm_configs() -> Vec<LLMConfig> {
             api_key: default_api_key(),
             allow_reasoning: true,
             custom_prompt: None,
+            actions_menu: true,
         },
         LLMConfig {
             configuration_name: String::from("free"),
@@ -83,6 +84,7 @@ fn default_llm_configs() -> Vec<LLMConfig> {
             api_key: default_api_key(),
             allow_reasoning: true,
             custom_prompt: None,
+            actions_menu: true,
         },
         LLMConfig {
             configuration_name: String::from("think"),
@@ -91,6 +93,7 @@ fn default_llm_configs() -> Vec<LLMConfig> {
             api_key: default_api_key(),
             allow_reasoning: true,
             custom_prompt: None,
+            actions_menu: true,
         },
     ]
 }
@@ -139,6 +142,8 @@ pub struct LLMConfig {
 
     #[serde(default)]
     pub custom_prompt: Option<CustomPrompt>,
+    #[serde(default)]
+    pub actions_menu: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -218,6 +223,7 @@ impl Default for LLMConfig {
             api_key: String::from("[insert api key here]"),
             allow_reasoning: true,
             custom_prompt: None,
+            actions_menu: true,
         }
     }
 }
@@ -280,18 +286,15 @@ impl RvConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default)]
 pub enum OpenAIProvider {
     OpenAI,
     #[default]
     OpenRouter,
 }
 
-
 /// Enum to control what to compare a branch against
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, ValueEnum)]
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, ValueEnum, Default)]
 pub enum BranchAgainst {
     /// Compare branch against the current HEAD
     Current,
@@ -299,7 +302,6 @@ pub enum BranchAgainst {
     #[default]
     Main,
 }
-
 
 impl LLMConfig {
     pub fn resolve_api_key(&self) -> anyhow::Result<String> {
