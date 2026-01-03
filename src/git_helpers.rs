@@ -42,12 +42,10 @@ impl ExpandedCommit {
     /// This operation should always be successful
     pub fn get_xml_structure(self, diff_profile: DiffProfile) -> String {
         let mut xml_string = String::new();
-        // [review] I can unwrap because I can suppose that there are sources in order to generate a XML structure
         let sources = self.sources.as_ref().ok_or("Sources are missing").unwrap();
 
         if diff_profile.report_diffs {
             let mut diff_counter: usize = 0;
-            // [review] I can unwrap beacuse I can suppose that there are diffs in order to generate a XML structure
             let diffs = self.diffs.as_ref().ok_or("Diffs are missing").unwrap();
             for diff_val in diffs {
                 // Open <diff NAME> tag

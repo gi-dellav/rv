@@ -7,7 +7,6 @@ It works as a CLI tool easy to use and integrate, allowing to review the code th
 
 - **Unix philosophy** <br> *rv* follows the Unix philosophy by providing a minimalstic tool (~1.5k LoC) that does one thing well.
 - **Cheap and low-latency** <br> *rv* is optimized to use cheap and low-latency models in order to allow for reviews that takes less than 10 seconds and cost about $0.002 (on average, tested with Qwen3-32B)
-- **Deterministic** <br> *rv* uses deterministic sampling (LLM's temperature set to 0 and other parameters tweaked) in order to avoid anomalies in the output.
 - **Fully customizable** <br> *rv* is designed to give full freedom with its configuration file, allowing for different providers, LLMs and prompts
 - **Semplicity of code** <br> *rv* is designed to be written using clean, understandable and safe (as in no `unsafe` instructions used) Rust code
 - **Open source and non-monetized** <br> *rv* is released under the GPL license and we will never sell subscriptions, cloud credits or other form of monetized services to our end users
@@ -51,27 +50,26 @@ For reviewing files without the Git integration: `rv --raw`
 NOTE: If you want to use the output for shell pipes or for writing to a file, use the `-P`/`--pipe` flag.
 
 
-
 ## Model profiles
 
-The current suggested models is `deepseek/deepseek-r1-distill-qwen-32b` (for the `default` profile) and `deepseek/deepseek-r1` (for the `think` profile) for more intensive tasks.
+The current suggested models is `qwen/qwen3-235b-a22b-2507` (for the `default` profile) and `deepseek/deepseek-v3.2` (for the `think` profile) for more intensive tasks.
 You can switch between different profiles using the `-l` CLI flag and you can add or remove profiles from `~/.config/rv/config.toml`.
 
 ## Future work
 
 Milestones planned for the v1.0.0:
-- custom prompt support
 - *chat tool* for turning the review into a chatbot-like assistant
 
 Milestones planned for the future:
-- integration with `ast-grep`
-- ability to add context sources from the *chat tool*
-- ability to add context sources from `.rv_*` project files
+- **integration with `ast-grep` for accessing source files outside of the current commit**
+- **ability to add context sources from the *chat tool***
+- **ability to add context sources from `.rv_*` project files**
 - ability to use regex rules (with `$any[]`, `$all[]` and `$none[]`) inside of project files and custom prompts
 - ability to load PDF files as context sources (useful for documentation, specifications, etc)
-- *fix tool* for producing and applying fixes directly from the review
+- ***fix tool* for producing and applying fixes directly from the review**
+- integration with git hooks
+- integration with language-specific CLI tools (ex. `cargo check`)
 - *text mode* for reviewing content and style of natural language documents, with support for TXT, MarkDown, LaTex.
-- full project context support (indexed references to other code or text files and full project reviews)
 - markdown rendering with external tools (ex. [glow](https://github.com/charmbracelet/glow))
 - ollama support for local inference
 - support for other cloud LLM providers
