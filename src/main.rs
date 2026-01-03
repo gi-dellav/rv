@@ -63,7 +63,7 @@ async fn main() {
 
     if args.raw {
         if let Err(e) =
-            review::raw_review(rvconfig, args.llm, args.file, args.dir, Some(args.recursive)).await
+            review::raw_review(rvconfig, args.llm, args.file, args.dir, Some(args.recursive), args.pipe).await
         {
             eprintln!("Error during raw review: {e}");
             std::process::exit(1);
@@ -86,6 +86,7 @@ async fn main() {
             args.branch_mode,
             args.pr,
             Some(args.log_xml_structure),
+            args.pipe,
         )
         .await
         {

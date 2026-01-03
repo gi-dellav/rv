@@ -114,6 +114,7 @@ pub async fn raw_review(
     file_path: Option<PathBuf>,
     dir_path: Option<PathBuf>,
     recursive: Option<bool>,
+    pipe: bool,
 ) -> Result<()> {
     if let Some(path) = file_path {
         if !path.exists() {
@@ -138,7 +139,7 @@ pub async fn raw_review(
                 }
 
                 // Process the review
-                process_review(&rvconfig, llm_selection, expcommit, None).await?;
+                process_review(&rvconfig, llm_selection, expcommit, None, pipe).await?;
             }
             Err(e) => {
                 println!("[ERROR] Failed to read file: {e}");
@@ -187,7 +188,7 @@ pub async fn raw_review(
         }
 
         expcommit.diffs = Some(diffs);
-        process_review(&rvconfig, llm_selection, expcommit, None).await?;
+        process_review(&rvconfig, llm_selection, expcommit, None, pipe).await?;
     } else {
         println!(
             "[ERROR] In order to use the RAW mode, you need to specify a --file or a --dir input"
@@ -221,11 +222,14 @@ async fn process_review(
     llm_selection: Option<String>,
     expcommit: ExpandedCommit,
     log_xml_structure: Option<bool>,
+    pipe: bool,
 ) -> Result<()> {
     // Convert to structured format
     let review_prompt = expcommit.get_xml_structure(rvconfig.diff_profile);
 
-    term_helpers::clear_term();
+    if !pipe {
+        term_helpers::clear_term();
+    }
     if log_xml_structure.is_some() && log_xml_structure.unwrap() {
         println!("{review_prompt}");
         println!("  -------  ");
@@ -273,6 +277,7 @@ pub async fn git_review(
     branch_mode: Option<BranchAgainst>,
     github_pr: Option<String>,
     log_xml_structure: Option<bool>,
+    pipe: bool,
 ) -> Result<()> {
     let mut expcommit: Option<ExpandedCommit> = None;
 
@@ -338,7 +343,7 @@ pub async fn git_review(
     }
 
     if let Some(expanded) = expcommit {
-        process_review(&rvconfig, llm_selection, expanded, log_xml_structure).await?;
+        process_review(&rvconfig, llm_selection, expanded, log_xml_structure, pipe).await?;
     } else {
         println!("[ERROR] Git integrations failed. Are you running `rv` inside a Git repository?");
         println!("      | [LOG] {expcommit:?}");
