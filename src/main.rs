@@ -62,8 +62,15 @@ async fn main() {
     let rvconfig = config::RvConfig::load_default().unwrap();
 
     if args.raw {
-        if let Err(e) =
-            review::raw_review(rvconfig, args.llm, args.file, args.dir, Some(args.recursive), args.pipe).await
+        if let Err(e) = review::raw_review(
+            rvconfig,
+            args.llm,
+            args.file,
+            args.dir,
+            Some(args.recursive),
+            args.pipe,
+        )
+        .await
         {
             eprintln!("Error during raw review: {e}");
             std::process::exit(1);

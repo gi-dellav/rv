@@ -67,14 +67,32 @@ fn default_allow_reasoning() -> bool {
 }
 
 fn default_llm_configs() -> Vec<LLMConfig> {
-    vec![LLMConfig {
-        configuration_name: String::from("default"),
-        provider: OpenAIProvider::OpenRouter,
-        model_id: String::from("deepseek/deepseek-v3.2"),
-        api_key: default_api_key(),
-        allow_reasoning: true,
-        custom_prompt: None,
-    }]
+    vec![
+        LLMConfig {
+            configuration_name: String::from("default"),
+            provider: OpenAIProvider::OpenRouter,
+            model_id: String::from("qwen/qwen3-235b-a22b-2507"),
+            api_key: default_api_key(),
+            allow_reasoning: true,
+            custom_prompt: None,
+        },
+        LLMConfig {
+            configuration_name: String::from("free"),
+            provider: OpenAIProvider::OpenRouter,
+            model_id: String::from("mistralai/devstral-2512:free"),
+            api_key: default_api_key(),
+            allow_reasoning: true,
+            custom_prompt: None,
+        },
+        LLMConfig {
+            configuration_name: String::from("think"),
+            provider: OpenAIProvider::OpenRouter,
+            model_id: String::from("deepseek/deepseek-v3.2:online"),
+            api_key: default_api_key(),
+            allow_reasoning: true,
+            custom_prompt: None,
+        },
+    ]
 }
 
 fn default_default_llm_config() -> String {
