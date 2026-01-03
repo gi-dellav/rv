@@ -314,7 +314,9 @@ pub async fn git_review(
             let exp_unwrapped: ExpandedCommit = exp_result.unwrap();
 
             if exp_unwrapped.clone().is_empty() {
-                println!("Staged is empty, switching to HEAD");
+                if !pipe {
+                    println!("Staged is empty, switching to HEAD");
+                }
                 let commit_str = "HEAD";
                 // TODO Better error handling
                 let commit_oid =
@@ -329,7 +331,9 @@ pub async fn git_review(
             }
         } else {
             // HEAD commit
-            println!("Staged is empty, switching to HEAD");
+            if !pipe {
+                println!("Staged is empty, switching to HEAD");
+            }
             let commit_str = "HEAD";
             // TODO Better error handling
             let commit_oid =
