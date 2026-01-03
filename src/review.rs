@@ -84,7 +84,7 @@ fn read_file(filename: &str) -> Option<String> {
     }
 }
 /// Add context, guidelines and custom instructions to the LLM prompt
-pub fn pack_prompt(rvconfig: &RvConfig) -> Result<String> {
+pub fn pack_prompt(rvconfig: &RvConfig, llm_config: Option<&LLMConfig>) -> Result<String> {
     let mut system_prompt = SYSTEM_PROMPT.to_string();
     let mut suffix_context: String = String::new();
 
@@ -108,13 +108,23 @@ pub fn pack_prompt(rvconfig: &RvConfig) -> Result<String> {
         }
     }
 
-    // Handle custom prompts
-    for custom_prompt_file in &rvconfig.project_custom_prompt_files {
-        let content = read_file(custom_prompt_file);
-        if let Some(text) = content {
-            suffix_context.push_str("<custom_prompt>");
-            suffix_context.push_str(&text);
-            suffix_context.push_str("</custom_prompt>");
+    // Handle custom prompt from LLM config if provided
+    if let Some(config) = llm_config {
+        if let Some(custom_prompt) = &config.custom_prompt {
+            match custom_prompt {
+                CustomPrompt::Suffix(suffix) => {
+                    suffix_context.push_str("<custom_prompt>");
+                    suffix_context.push_str(suffix);
+                    suffix_context.push_str("</custom_prompt>");
+                }
+                CustomPrompt::Replace(replacement) => {
+                    // Replace the entire system prompt with custom content
+                    system_prompt = replacement.clone();
+                    // Still append other context files
+                    system_prompt.push_str(&suffix_context);
+                    return Ok(system_prompt);
+                }
+            }
         }
     }
 
