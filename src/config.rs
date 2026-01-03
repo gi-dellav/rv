@@ -236,9 +236,9 @@ impl RvConfig {
         let loaded_config: anyhow::Result<RvConfig> =
             RvConfig::load_from_path(config_path.display().to_string());
 
-        if loaded_config.is_ok() {
-            // Return succesfully loaded config
-            Ok(loaded_config.unwrap())
+        if let Ok(config) = loaded_config {
+            // Return successfully loaded config
+            Ok(config)
         } else {
             // Create new config
             let new_config: RvConfig = Default::default();

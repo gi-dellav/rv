@@ -304,8 +304,8 @@ pub async fn git_review(
         let commit_oid = git_helpers::get_oid(&commit_str).context("Failed to get commit OID")?;
         let exp_result = git_helpers::expanded_from_commit(commit_oid);
 
-        if exp_result.is_ok() {
-            expcommit = Some(exp_result.unwrap());
+        if let Ok(expanded) = exp_result {
+            expcommit = Some(expanded);
         }
     } else if let Some(branch_name) = branch {
         //println!("[DEBUG] Reviewing branch: {}", branch_name);
@@ -315,8 +315,8 @@ pub async fn git_review(
         }
 
         let exp_result = git_helpers::expanded_from_branch(&branch_name, used_branch_mode);
-        if exp_result.is_ok() {
-            expcommit = Some(exp_result.unwrap());
+        if let Ok(expanded) = exp_result {
+            expcommit = Some(expanded);
         }
     } else if let Some(pr_id) = github_pr {
         //println!("[DEBUG] Reviewing GitHub PR: {}", pr_id);
@@ -341,8 +341,8 @@ pub async fn git_review(
                     git_helpers::get_oid(commit_str).context("Failed to get commit OID")?;
                 exp_result = git_helpers::expanded_from_commit(commit_oid);
 
-                if exp_result.is_ok() {
-                    expcommit = Some(exp_result.unwrap());
+                if let Ok(expanded) = exp_result {
+                    expcommit = Some(expanded);
                 }
             } else {
                 expcommit = Some(exp_unwrapped);
@@ -358,8 +358,8 @@ pub async fn git_review(
                 git_helpers::get_oid(commit_str).context("Failed to get commit OID")?;
             exp_result = git_helpers::expanded_from_commit(commit_oid);
 
-            if exp_result.is_ok() {
-                expcommit = Some(exp_result.unwrap());
+            if let Ok(expanded) = exp_result {
+                expcommit = Some(expanded);
             }
         }
     }

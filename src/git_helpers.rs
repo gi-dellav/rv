@@ -47,7 +47,7 @@ impl ExpandedCommit {
         if diff_profile.report_diffs {
             let mut diff_counter: usize = 0;
             let diffs = self.diffs.as_ref().ok_or("Diffs are missing").unwrap();
-            for diff_val in diffs {
+            for (diff_counter, diff_val) in diffs.iter().enumerate() {
                 // Open <diff NAME> tag
                 xml_string.push_str("<diff ");
                 let diff_source_path = sources[diff_counter].to_string_lossy();
@@ -59,8 +59,6 @@ impl ExpandedCommit {
 
                 // Close </diff> tag
                 xml_string.push_str("\n</diff>\n");
-
-                diff_counter += 1;
             }
         }
         if diff_profile.report_diffs && diff_profile.report_sources {
