@@ -69,8 +69,17 @@ exact structure and rules above.
 "#;
 
 fn read_file(filename: &str) -> Option<String> {
-    // TODO Load files from project's root directory not current working directory
-    match std::fs::read_to_string(filename) {
+    // Load files from project's root directory (where .git is) not current working directory
+    let repo = match git2::Repository::discover(".") {
+        Ok(repo) => repo,
+        Err(_) => return None,
+    };
+    let workdir = match repo.workdir() {
+        Some(wd) => wd,
+        None => return None,
+    };
+    let full_path = workdir.join(filename);
+    match std::fs::read_to_string(&full_path) {
         Ok(content) => Some(content),
         Err(_) => None,
     }
@@ -101,7 +110,14 @@ pub fn pack_prompt(rvconfig: &RvConfig) -> Result<String> {
     }
 
     // Handle custom prompts
-    // TODO Implement custom prompts support
+    for custom_prompt_file in &rvconfig.project_custom_prompt_files {
+        let content = read_file(custom_prompt_file);
+        if let Some(text) = content {
+            suffix_context.push_str("<custom_prompt>");
+            suffix_context.push_str(&text);
+            suffix_context.push_str("</custom_prompt>");
+        }
+    }
 
     system_prompt.push_str(&suffix_context);
 

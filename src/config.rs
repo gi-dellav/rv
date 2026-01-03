@@ -71,15 +71,7 @@ fn default_llm_configs() -> Vec<LLMConfig> {
         LLMConfig {
             configuration_name: String::from("default"),
             provider: OpenAIProvider::OpenRouter,
-            model_id: String::from("qwen/qwen3-235b-a22b-2507"),
-            api_key: default_api_key(),
-            allow_reasoning: true,
-            custom_prompt: None,
-        },
-        LLMConfig {
-            configuration_name: String::from("think"),
-            provider: OpenAIProvider::OpenRouter,
-            model_id: String::from("deepseek/deepseek-v3.2:online"),
+            model_id: String::from("deepseek/deepseek-v3.2"),
             api_key: default_api_key(),
             allow_reasoning: true,
             custom_prompt: None,
@@ -122,7 +114,6 @@ pub struct LLMConfig {
     pub provider: OpenAIProvider,
     #[serde(default = "default_model_id")]
     pub model_id: String,
-    // TODO: Make api_key optional, in order to allow loading from the environment variable
     #[serde(default = "default_api_key")]
     pub api_key: String,
 
@@ -207,7 +198,7 @@ impl Default for LLMConfig {
         LLMConfig {
             configuration_name: String::from("default"),
             provider: OpenAIProvider::OpenRouter,
-            model_id: String::from("deepseek/deepseek-r1:free"),
+            model_id: String::from("deepseek/deepseek-v3.2"),
             api_key: String::from("[insert api key here]"),
             allow_reasoning: true,
             custom_prompt: None,

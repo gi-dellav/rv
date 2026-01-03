@@ -97,8 +97,7 @@ impl ExpandedCommit {
     }
 }
 
-/// Get an ExpandedCommit rappresenting staged edits
-/// TODO: Update to using `diff_trees_to_expanded`
+/// Get an ExpandedCommit representing staged edits
 pub fn staged_diffs(diff_profile: DiffProfile) -> Result<ExpandedCommit, git2::Error> {
     let repo = Repository::discover(".")?;
     let index = repo.index()?;
@@ -120,43 +119,70 @@ pub fn staged_diffs(diff_profile: DiffProfile) -> Result<ExpandedCommit, git2::E
     // Customize diff_opts if you want (context lines, pathspecs, etc.)
     let diff = repo.diff_tree_to_index(head_tree.as_ref(), Some(&index), Some(&mut diff_opts))?;
 
-    // Map path -> patch text
-    let mut file_patches: HashMap<PathBuf, String> = HashMap::new();
+    // Use the same logic as diff_trees_to_expanded to collect patches and touched files
+    let mut patches: Vec<String> = Vec::new();
+    let mut current_patch = String::new();
+    let mut last_file: Option<PathBuf> = None;
+    let mut touched: BTreeSet<PathBuf> = BTreeSet::new();
 
-    // Print the diff in patch format; the closure is called for every diff line.
     diff.print(DiffFormat::Patch, |delta, _hunk, line| {
-        // Prefer new file path; fall back to old file path.
-        let path = delta
+        // Determine the file path for this delta: prefer the new file path, else old file path
+        let maybe_path = delta
             .new_file()
             .path()
-            .or_else(|| delta.old_file().path())
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("unknown"));
-
-        // Most .gitignore won't consider Cargo.lock, even tho it's not a good idea to include in the review prompt
-        // In the future we might implement a more polished .rvignore file that works as a .gitignore counterpart for rv
-        if !(path.to_str().unwrap().contains("Cargo.lock")) {
-            let buf = file_patches.entry(path).or_default();
-
-            // Line content may not be valid UTF-8 (binary). Handle that gracefully.
-            match str::from_utf8(line.content()) {
-                Ok(s) => buf.push_str(s),
-                Err(_) => buf.push_str("[BINARY DATA]\n"),
+            .or(delta.old_file().path())
+            .map(|p| p.to_path_buf());
+        // If the delta changed (a new file's patch started), flush the previous patch
+        if last_file.as_ref() != maybe_path.as_ref() {
+            if !current_patch.is_empty() {
+                patches.push(std::mem::take(&mut current_patch));
             }
+            last_file = maybe_path.clone();
         }
 
-        true // continue printing
+        // Append the line content (may be binary; try to decode as UTF-8)
+        let content = line.content();
+        match std::str::from_utf8(content) {
+            Ok(s) => current_patch.push_str(s),
+            Err(_) => current_patch.push_str(&format!("<non-utf8 {} bytes>", content.len())),
+        }
+
+        if let Some(p) = maybe_path {
+            touched.insert(p);
+        }
+        // return true to continue processing
+        true
     })?;
 
-    let result: Vec<(PathBuf, String)> = file_patches.into_iter().collect();
-    let (result_sources, result_diffs): (Vec<PathBuf>, Vec<String>) = result.into_iter().unzip();
+    // push the last accumulated patch if any
+    if !current_patch.is_empty() {
+        patches.push(current_patch);
+    }
+
+    // Filter out Cargo.lock from both patches and touched files
+    let mut filtered_patches = Vec::new();
+    let mut filtered_touched = BTreeSet::new();
+    for (patch, path) in patches.into_iter().zip(touched.into_iter()) {
+        if let Some(path_str) = path.to_str() {
+            if path_str.contains("Cargo.lock") {
+                continue;
+            }
+        }
+        filtered_patches.push(patch);
+        filtered_touched.insert(path);
+    }
+
     let mut expcommit = ExpandedCommit::new();
-    if diff_profile.report_diffs {
-        expcommit.diffs = Some(result_diffs);
+    if diff_profile.report_diffs && !filtered_patches.is_empty() {
+        expcommit.diffs = Some(filtered_patches);
     }
     // Keep the sources in order to allow ExpandedCommit::get_xml_structure to find the namefile of diffs
     // Don't worry, the report_sources variable will be considered in the get_xml_structure in order to allow source-less reports
-    expcommit.sources = Some(result_sources);
+    expcommit.sources = if filtered_touched.is_empty() {
+        None
+    } else {
+        Some(filtered_touched.into_iter().collect())
+    };
 
     Ok(expcommit)
 }
