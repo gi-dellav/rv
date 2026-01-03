@@ -37,11 +37,20 @@ Once you have the API key, you can insert it in your configuration file (on Linu
 ## How to use
 
 For reviewing staged changes or the last commit: `rv`
+
 For reviewing a specific commit: `rv -c [commit]`
+
 For reviewing a specific branch: `rv -b [branch]`
+
 For reviewing a Github PR: `rv -p [pr-id]` (Requires `gh` to be installed)
+
 For switching to a different LLM profile: `rv -l [llm]`
+
 For reviewing files without the Git integration: `rv --raw`
+
+NOTE: If you want to use the output for shell pipes or for writing to a file, use the `-P`/`--pipe` flag.
+
+
 
 ## Model profiles
 
@@ -53,7 +62,6 @@ You can switch between different profiles using the `-l` CLI flag and you can ad
 Milestones planned for the v1.0.0:
 - custom prompt support
 - *chat tool* for turning the review into a chatbot-like assistant
-- `--pipe` for outputting the result in raw text format
 
 Milestones planned for the future:
 - integration with `ast-grep`
