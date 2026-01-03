@@ -303,9 +303,11 @@ impl LLMConfig {
                     })
                 }
                 OpenAIProvider::OpenAI => {
-                    Err(anyhow::anyhow!(
-                        "[ERROR] Insert compatible API key inside `~/.config/rv/config.toml`"
-                    ))
+                    std::env::var("OPENAI_API_KEY").map_err(|_| {
+                        anyhow::anyhow!(
+                            "[ERROR] Insert compatible API key inside `~/.config/rv/config.toml` or set OPENAI_API_KEY environment variable"
+                        )
+                    })
                 }
             }
         } else {
