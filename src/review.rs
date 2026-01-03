@@ -230,7 +230,7 @@ async fn process_review(
     if !pipe {
         term_helpers::clear_term();
     }
-    if log_xml_structure.is_some() && log_xml_structure.unwrap() {
+    if !pipe && log_xml_structure.is_some() && log_xml_structure.unwrap() {
         println!("{review_prompt}");
         println!("  -------  ");
     }
