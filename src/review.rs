@@ -2,9 +2,12 @@ use crate::config::{BranchAgainst, CustomPrompt, LLMConfig, RvConfig};
 use crate::git_helpers;
 use crate::git_helpers::ExpandedCommit;
 use crate::github;
-use crate::term_helpers;
+use crate::term_helpers::{self, action_menu, get_terminal_input, select_action_menu};
 
 use anyhow::{Context, Result};
+use rig::OneOrMany;
+use rig::message::{Message, UserContent};
+use rig::providers::anthropic::streaming::MessageStart;
 
 use crate::llm::create_llm_provider;
 use std::path::PathBuf;
@@ -67,6 +70,42 @@ exact structure and rules above.
 
 "#;
 
+const CHAT_SYSTEM_PROMPT: &str = r#"
+You are a senior software engineer, talking with another software engineer on your team.
+Produce a concise and useful response.
+Follow these rules exactly.
+
+OUTPUT FORMAT & STYLE
+- ASCII only. No emojis, no markdown, no color codes.
+- Soft-wrap at ~80 columns.
+- Keep output minimal and actionable. Short sentences.
+- Prefer numbered or bullet lists.
+- If no problems: print one-line confirmation plus one short suggestion.
+
+KEY RULES (must obey)
+- Prioritize correctness.
+- If multiple safe fixes for a problem exist, give the simplest first. Mark others
+  as "Optional".
+- Always include the exact source file path and line number when
+  referencing code or suggesting edits.
+- Respect comments in source, especially tags like [review] or [rv].
+- NEVER report repetitions or diffs that don't exist in the source.
+- NEVER include issues about the <diff> that aren't present in the
+  <source>.
+- Assume latest stable toolchain unless told otherwise.
+
+INPUT FORMAT (what I'll send next)
+- <context FILE>   : text file containing context about the project
+- <guideline FILE> : text file containing guidelines and instructions
+- <diff FILE>      : git diff of the file to review
+- <source FILE>    : text file to be reviewed
+
+Now the conversation will start.
+Act following the rules above.
+
+=============================
+"#;
+
 fn read_file(filename: &str) -> Option<String> {
     // Load files from project's root directory (where .git is) not current working directory
     let repo = match git2::Repository::discover(".") {
@@ -78,8 +117,12 @@ fn read_file(filename: &str) -> Option<String> {
     std::fs::read_to_string(&full_path).ok()
 }
 /// Add context, guidelines and custom instructions to the LLM prompt
-pub fn pack_prompt(rvconfig: &RvConfig, llm_config: Option<&LLMConfig>) -> Result<String> {
-    let mut system_prompt = SYSTEM_PROMPT.to_string();
+pub fn pack_prompt(
+    base_system_prompt: &str,
+    rvconfig: &RvConfig,
+    llm_config: Option<&LLMConfig>,
+) -> Result<String> {
+    let mut system_prompt = base_system_prompt.to_string();
     let mut suffix_context: String = String::new();
 
     // Handle project guidelines files
@@ -104,22 +147,23 @@ pub fn pack_prompt(rvconfig: &RvConfig, llm_config: Option<&LLMConfig>) -> Resul
 
     // Handle custom prompt from LLM config if provided
     if let Some(config) = llm_config
-        && let Some(custom_prompt) = &config.custom_prompt {
-            match custom_prompt {
-                CustomPrompt::Suffix(suffix) => {
-                    suffix_context.push_str("<custom_prompt>");
-                    suffix_context.push_str(suffix);
-                    suffix_context.push_str("</custom_prompt>");
-                }
-                CustomPrompt::Replace(replacement) => {
-                    // Replace the entire system prompt with custom content
-                    system_prompt = replacement.clone();
-                    // Still append other context files
-                    system_prompt.push_str(&suffix_context);
-                    return Ok(system_prompt);
-                }
+        && let Some(custom_prompt) = &config.custom_prompt
+    {
+        match custom_prompt {
+            CustomPrompt::Suffix(suffix) => {
+                suffix_context.push_str("<custom_prompt>");
+                suffix_context.push_str(suffix);
+                suffix_context.push_str("</custom_prompt>");
+            }
+            CustomPrompt::Replace(replacement) => {
+                // Replace the entire system prompt with custom content
+                system_prompt = replacement.clone();
+                // Still append other context files
+                system_prompt.push_str(&suffix_context);
+                return Ok(system_prompt);
             }
         }
+    }
 
     system_prompt.push_str(&suffix_context);
 
@@ -133,6 +177,8 @@ pub async fn raw_review(
     dir_path: Option<PathBuf>,
     recursive: Option<bool>,
     pipe: bool,
+    start_as_chat: bool,
+    action_menu: Option<bool>,
 ) -> Result<()> {
     if let Some(path) = file_path {
         if !path.exists() {
@@ -157,7 +203,16 @@ pub async fn raw_review(
                 }
 
                 // Process the review
-                process_review(&rvconfig, llm_selection, expcommit, None, pipe).await?;
+                process_review(
+                    &rvconfig,
+                    llm_selection,
+                    expcommit,
+                    None,
+                    pipe,
+                    start_as_chat,
+                    action_menu,
+                )
+                .await?;
             }
             Err(e) => {
                 println!("[ERROR] Failed to read file: {e}");
@@ -206,7 +261,16 @@ pub async fn raw_review(
         }
 
         expcommit.diffs = Some(diffs);
-        process_review(&rvconfig, llm_selection, expcommit, None, pipe).await?;
+        process_review(
+            &rvconfig,
+            llm_selection,
+            expcommit,
+            None,
+            pipe,
+            start_as_chat,
+            action_menu,
+        )
+        .await?;
     } else {
         println!(
             "[ERROR] In order to use the RAW mode, you need to specify a --file or a --dir input"
@@ -241,6 +305,8 @@ async fn process_review(
     expcommit: ExpandedCommit,
     log_xml_structure: Option<bool>,
     pipe: bool,
+    start_as_chat: bool,
+    action_menu: Option<bool>,
 ) -> Result<()> {
     // Convert to structured format
     let review_prompt = expcommit.get_xml_structure(rvconfig.diff_profile);
@@ -274,17 +340,50 @@ async fn process_review(
     };
 
     let api_key = llm_configuration.resolve_api_key()?;
-    let system_prompt = pack_prompt(rvconfig, Some(llm_configuration))?;
+
+    // If the CLI flag defines the value of action_mode, use that value
+    // Otherwise, use the value defined by the LLMConfig
+    let mut run_action_mode: bool = action_menu.unwrap_or(llm_configuration.actions_menu);
 
     // Create LLM provider using factory pattern
     let mut llm_config_with_key = llm_configuration.clone();
     llm_config_with_key.api_key = api_key;
     let client = create_llm_provider(llm_config_with_key);
 
-    // Stream the response to stdout
-    client.stream_request_stdout(system_prompt, review_prompt)?;
+    let mut messages: Vec<Message> = Vec::new();
+
+    let system_prompt = if start_as_chat {
+        pack_prompt(SYSTEM_PROMPT, rvconfig, Some(llm_configuration))?
+    } else {
+        pack_prompt(CHAT_SYSTEM_PROMPT, rvconfig, Some(llm_configuration))?
+    };
+
+    if start_as_chat {
+        // TODO Start directly with chat (before stream_request_stdout) if `chat_mode`
+        messages.push(generate_message_from_stdin());
+    }
+
+    loop {
+        client.stream_request_stdout(system_prompt, review_prompt, messages)?;
+
+        // TODO Implement action menu
+        if run_action_mode {
+            let selected_action = select_action_menu();
+        }
+
+        // TODO Implement chat mode
+    }
 
     Ok(())
+}
+
+pub fn generate_message_from_stdin() -> Message {
+    let string = get_terminal_input(String::from("[chat]>"));
+    let text = rig::agent::Text { text: string };
+    let user_content = UserContent::Text(text);
+    return Message::User {
+        content: OneOrMany::one(user_content),
+    };
 }
 
 pub async fn git_review(
@@ -296,6 +395,8 @@ pub async fn git_review(
     github_pr: Option<String>,
     log_xml_structure: Option<bool>,
     pipe: bool,
+    start_as_chat: bool,
+    action_menu: Option<bool>,
 ) -> Result<()> {
     let mut expcommit: Option<ExpandedCommit> = None;
 
@@ -353,7 +454,6 @@ pub async fn git_review(
                 println!("Staged is empty, switching to HEAD");
             }
             let commit_str = "HEAD";
-            // TODO Better error handling
             let commit_oid =
                 git_helpers::get_oid(commit_str).context("Failed to get commit OID")?;
             exp_result = git_helpers::expanded_from_commit(commit_oid);
@@ -365,7 +465,16 @@ pub async fn git_review(
     }
 
     if let Some(expanded) = expcommit {
-        process_review(&rvconfig, llm_selection, expanded, log_xml_structure, pipe).await?;
+        process_review(
+            &rvconfig,
+            llm_selection,
+            expanded,
+            log_xml_structure,
+            pipe,
+            start_as_chat,
+            action_menu,
+        )
+        .await?;
     } else {
         println!("[ERROR] Git integrations failed. Are you running `rv` inside a Git repository?");
         println!("      | [LOG] {expcommit:?}");
