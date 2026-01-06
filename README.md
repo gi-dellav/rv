@@ -15,15 +15,17 @@ It works as a CLI tool easy to use and integrate, allowing to review the code th
 
 ### From crates.io
 
-Just run `cargo install rv-tool --version 1.0.0-rc3` in order to install the last version (the specified version is only needed on testing releases); then, follow the "From the source" guide from the third step.
+Just run `cargo install rv-tool` in order to install the last version (the specified version is only needed on testing releases); then, follow the "From the source" guide from the third step.
 
 ### From the source
 
-1. Clone the repository
-2. Compile using `cargo build --release`
-3. Run for the first time (just `rv`) in order to generate the configuration file
-4. Edit the `~/.config/rv/config.toml` file setting up provider, model and API key
-5. *rv* is now installed and ready! Run `rv` while you have staged edits (aka after `git add`) in order to get a code review of your current progress
+Clone the repository and compile using `cargo install --path .`
+
+### Finish configuration
+
+1. Run for the first time (just `rv`) in order to generate the configuration file
+2. Edit the `~/.config/rv/config.toml` file setting up provider, model and API key (if you don't want to use ENV variables)
+3. *rv* is now installed and ready! Run `rv` while you have staged edits (aka after `git add`) in order to get a code review of your current progress
 
 NOTE: *rv* has been only tested on Linux; if possible try it on MacOS and Windows and open an issue with the results.
 
@@ -59,13 +61,12 @@ You can switch between different profiles using the `-l` CLI flag and you can ad
 
 Milestones planned for the future:
 - make Action Menu configurable
-- **integration with `ast-grep` for accessing source files outside of the current commit**
-- support for larger reviews by splitting into file-by-file review (requires `ast-grep` integration for checking source references)
+- **allow for referencing files outside of the current review (full project context)**
+- support for larger reviews by splitting into file-by-file review (requires full project context implementation)
 - **ability to add context sources from the chat tool or from project files**
 - ability to use regex rules (with `$any[]`, `$all[]` and `$none[]`) inside of project files and custom prompts
 - ability to load PDF files and images as context sources (useful for documentation, specifications, etc)
 - ***fix tool* for producing and applying fixes directly from the review**
-- unit test and docstring generation (requires *fix tool* implementation)
 - integration with git hooks
 - integration with language-specific CLI tools (ex. `cargo check`)
 - support for MCP servers
