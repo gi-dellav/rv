@@ -57,25 +57,21 @@ You can switch between different profiles using the `-l` CLI flag and you can ad
 
 ## Future work
 
-Milestones planned for the v1.0.0:
-- *chat tool* for turning the review into a chatbot-like assistant
-
 Milestones planned for the future:
+- make Action Menu configurable
 - **integration with `ast-grep` for accessing source files outside of the current commit**
 - support for larger reviews by splitting into file-by-file review (requires `ast-grep` integration for checking source references)
 - **ability to add context sources from the chat tool or from project files**
 - ability to use regex rules (with `$any[]`, `$all[]` and `$none[]`) inside of project files and custom prompts
-- ability to load PDF files as context sources (useful for documentation, specifications, etc)
+- ability to load PDF files and images as context sources (useful for documentation, specifications, etc)
 - ***fix tool* for producing and applying fixes directly from the review**
 - unit test and docstring generation (requires *fix tool* implementation)
 - integration with git hooks
 - integration with language-specific CLI tools (ex. `cargo check`)
 - support for MCP servers
-- expose as MCP server
 - *text mode* for reviewing content and style of natural language documents (ex. essays), with support for TXT, MarkDown, LaTex.
 - markdown rendering with external tools (ex. [glow](https://github.com/charmbracelet/glow))
-- ollama support for local inference
-- support for other cloud LLM providers
+- support for other local and cloud LLM providers
 
 ## Star History
 [![Star History Chart](https://api.star-history.com/svg?repos=gi-dellav/rv&type=Date)](https://www.star-history.com/#gi-dellav/rv&Date)

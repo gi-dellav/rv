@@ -61,7 +61,7 @@ struct Args {
 
     #[arg(long, action)]
     /// Force post-review actions menu (normally defined by config.toml)
-    actions_menu: bool,
+    actions_menu: Option<bool>,
 }
 
 #[tokio::main]
@@ -77,6 +77,8 @@ async fn main() {
             args.dir,
             Some(args.recursive),
             args.pipe,
+            args.chat,
+            args.actions_menu,
         )
         .await
         {
@@ -102,6 +104,8 @@ async fn main() {
             args.pr,
             Some(args.log_xml_structure),
             args.pipe,
+            args.chat,
+            args.actions_menu,
         )
         .await
         {

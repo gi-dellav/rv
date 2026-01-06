@@ -27,8 +27,10 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 futures = "0.3"
 indicatif = "0.18"
 dirs = "6.0"
-rig-core = { version = "0.27.0", git = "https://github.com/0xPlaygrounds/rig", branch = "main" }
+#rig-core = { version = "0.28.0", git = "https://github.com/0xPlaygrounds/rig", branch = "main" }
+rig-core = "0.28.0"
 rustyline = "17.0.2"
+dialoguer = { version = "0.12.0", default-features = false }
 
 [[bin]]
 name = "rv"

@@ -341,3 +341,14 @@ pub fn get_oid(rev: &str) -> Result<Oid, Error> {
     let commit = obj.peel_to_commit()?;
     Ok(commit.id())
 }
+
+/// Get the OID of the parent commit of a given commit
+pub fn get_parent_oid(commit_oid: Oid) -> Result<Oid, Error> {
+    let repo = Repository::discover(".")?;
+    let commit = repo.find_commit(commit_oid)?;
+    if commit.parent_count() > 0 {
+        Ok(commit.parent(0)?.id())
+    } else {
+        Err(Error::from_str("Commit has no parent"))
+    }
+}

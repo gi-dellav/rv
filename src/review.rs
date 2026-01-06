@@ -2,12 +2,10 @@ use crate::config::{BranchAgainst, CustomPrompt, LLMConfig, RvConfig};
 use crate::git_helpers;
 use crate::git_helpers::ExpandedCommit;
 use crate::github;
-use crate::term_helpers::{self, action_menu, get_terminal_input, select_action_menu};
+use crate::term_helpers::{self, ActionSelection};
 
 use anyhow::{Context, Result};
-use rig::OneOrMany;
-use rig::message::{Message, UserContent};
-use rig::providers::anthropic::streaming::MessageStart;
+use rig::message::Message;
 
 use crate::llm::create_llm_provider;
 use std::path::PathBuf;
@@ -211,6 +209,7 @@ pub async fn raw_review(
                     pipe,
                     start_as_chat,
                     action_menu,
+                    None,
                 )
                 .await?;
             }
@@ -269,6 +268,7 @@ pub async fn raw_review(
             pipe,
             start_as_chat,
             action_menu,
+            None,
         )
         .await?;
     } else {
@@ -307,6 +307,7 @@ async fn process_review(
     pipe: bool,
     start_as_chat: bool,
     action_menu: Option<bool>,
+    current_commit_oid: Option<git2::Oid>,
 ) -> Result<()> {
     // Convert to structured format
     let review_prompt = expcommit.get_xml_structure(rvconfig.diff_profile);
@@ -343,7 +344,7 @@ async fn process_review(
 
     // If the CLI flag defines the value of action_mode, use that value
     // Otherwise, use the value defined by the LLMConfig
-    let mut run_action_mode: bool = action_menu.unwrap_or(llm_configuration.actions_menu);
+    let run_action_mode: bool = action_menu.unwrap_or(llm_configuration.actions_menu);
 
     // Create LLM provider using factory pattern
     let mut llm_config_with_key = llm_configuration.clone();
@@ -352,38 +353,176 @@ async fn process_review(
 
     let mut messages: Vec<Message> = Vec::new();
 
+    // Determine which system prompt to use
     let system_prompt = if start_as_chat {
-        pack_prompt(SYSTEM_PROMPT, rvconfig, Some(llm_configuration))?
-    } else {
         pack_prompt(CHAT_SYSTEM_PROMPT, rvconfig, Some(llm_configuration))?
+    } else {
+        pack_prompt(SYSTEM_PROMPT, rvconfig, Some(llm_configuration))?
     };
 
-    if start_as_chat {
-        // TODO Start directly with chat (before stream_request_stdout) if `chat_mode`
-        messages.push(generate_message_from_stdin());
-    }
+    // Always include the review prompt as the first message
+    // This provides the code context to the LLM
+    messages.push(Message::user(review_prompt.clone()));
 
-    loop {
-        client.stream_request_stdout(system_prompt, review_prompt, messages)?;
+    let mut all_messages = messages;
+    let mut current_chat_mode = false;
 
-        // TODO Implement action menu
-        if run_action_mode {
-            let selected_action = select_action_menu();
+    // Note: We'll handle the chat mode messages appropriately in the branches below
+    // The println messages for start_as_chat are moved to their respective branches
+
+    if run_action_mode {
+        // When action mode is enabled, show the menu in a loop until Quit is selected
+        loop {
+            // First, get the LLM response if we haven't already
+            if all_messages.len() == 1 {
+                // Only the review prompt is present, get LLM response
+                let response =
+                    client.stream_request_stdout(system_prompt.clone(), all_messages.clone())?;
+                all_messages.push(Message::assistant(response));
+            }
+
+            // Show action menu
+            println!("\n\n\n");
+            let action: ActionSelection = term_helpers::select_action_menu();
+            match action {
+                ActionSelection::EnterChatMode => {
+                    current_chat_mode = true;
+                    println!("Entered chat mode. Type '/quit' or '/exit' to return to action menu.");
+                    loop {
+                        println!("\n");
+                        let input_string = term_helpers::get_terminal_input(String::from("[chat]> "));
+                        if input_string.trim().is_empty() {
+                            continue;
+                        }
+                        if input_string.trim() == "/quit" || input_string.trim() == "/exit" {
+                            println!("Exiting chat mode.");
+                            break;
+                        }
+                        let user_input = Message::user(input_string);
+                        all_messages.push(user_input);
+                        // Get LLM response, which streams to stdout
+                        let response = client
+                            .stream_request_stdout(system_prompt.clone(), all_messages.clone())?;
+                        all_messages.push(Message::assistant(response));
+                    }
+                    current_chat_mode = false;
+                }
+                ActionSelection::GitAddAndFixup => {
+                    if let Some(commit_oid) = current_commit_oid {
+                        let commit_hash = commit_oid.to_string();
+                        let status = std::process::Command::new("git")
+                            .args(&["add", "."])
+                            .status()?;
+                        if status.success() {
+                            let fixup_status = std::process::Command::new("git")
+                                .args(&["commit", "--fixup", &commit_hash])
+                                .status()?;
+                            if fixup_status.success() {
+                                println!("Successfully created fixup commit for {}", commit_hash);
+                            } else {
+                                println!("Failed to create fixup commit");
+                            }
+                        } else {
+                            println!("Failed to git add .");
+                        }
+                    } else {
+                        println!("No current commit to fixup against");
+                    }
+                }
+                ActionSelection::GitAddAndCommit => {
+                    let status = std::process::Command::new("git")
+                        .args(&["add", "."])
+                        .status()?;
+                    if status.success() {
+                        println!("Enter commit message: ");
+                        let mut commit_msg = String::new();
+                        std::io::stdin().read_line(&mut commit_msg)?;
+                        let commit_status = std::process::Command::new("git")
+                            .args(&["commit", "-m", &commit_msg.trim()])
+                            .status()?;
+                        if commit_status.success() {
+                            println!("Successfully created commit");
+                        } else {
+                            println!("Failed to commit");
+                        }
+                    } else {
+                        println!("Failed to git add .");
+                    }
+                }
+                ActionSelection::GitRevertLast => {
+                    if let Some(commit_oid) = current_commit_oid {
+                        match git_helpers::get_parent_oid(commit_oid) {
+                            Ok(parent_oid) => {
+                                let parent_hash = parent_oid.to_string();
+                                let status = std::process::Command::new("git")
+                                    .args(&["revert", "--no-edit", &parent_hash])
+                                    .status()?;
+                                if status.success() {
+                                    println!(
+                                        "Successfully reverted to parent commit {}",
+                                        parent_hash
+                                    );
+                                } else {
+                                    println!("Failed to revert");
+                                }
+                            }
+                            Err(_) => {
+                                println!("Current commit has no parent to revert to");
+                            }
+                        }
+                    } else {
+                        println!("No current commit to revert from");
+                    }
+                }
+                ActionSelection::Quit => {
+                    break;
+                }
+            }
         }
-
-        // TODO Implement chat mode
+    } else {
+        // Original flow when action menu is not enabled
+        if start_as_chat {
+            current_chat_mode = true;
+            println!("Chat mode started. Type your questions about the code.");
+            println!("Type '/quit' or '/exit' to exit.");
+            loop {
+                // If we haven't gotten the initial review, do that first
+                if all_messages.len() == 1 {
+                    // The first message is always the review prompt
+                    // Get LLM response to the initial review context
+                    let response = client.stream_request_stdout(system_prompt.clone(), all_messages.clone())?;
+                    all_messages.push(Message::assistant(response));
+                }
+                
+                println!("\n");
+                let input_string = term_helpers::get_terminal_input(String::from("[chat]> "));
+                if input_string.trim().is_empty() {
+                    continue;
+                }
+                if input_string.trim() == "/quit" || input_string.trim() == "/exit" {
+                    break;
+                }
+                let user_input = Message::user(input_string);
+                all_messages.push(user_input);
+                let response =
+                    client.stream_request_stdout(system_prompt.clone(), all_messages.clone())?;
+                all_messages.push(Message::assistant(response));
+            }
+        } else {
+            // Not in chat mode, just get the initial response
+            if all_messages.len() == 1 {
+                let response = client.stream_request_stdout(system_prompt.clone(), all_messages.clone())?;
+                all_messages.push(Message::assistant(response));
+            }
+        }
     }
 
     Ok(())
 }
 
 pub fn generate_message_from_stdin() -> Message {
-    let string = get_terminal_input(String::from("[chat]>"));
-    let text = rig::agent::Text { text: string };
-    let user_content = UserContent::Text(text);
-    return Message::User {
-        content: OneOrMany::one(user_content),
-    };
+    let string = term_helpers::get_terminal_input(String::from("[chat]> "));
+    Message::user(string)
 }
 
 pub async fn git_review(
@@ -399,10 +538,12 @@ pub async fn git_review(
     action_menu: Option<bool>,
 ) -> Result<()> {
     let mut expcommit: Option<ExpandedCommit> = None;
+    let mut current_commit_oid: Option<git2::Oid> = None;
 
     if let Some(commit_str) = commit {
         //println!("[DEBUG] Reviewing commit: {}", commit_str);
         let commit_oid = git_helpers::get_oid(&commit_str).context("Failed to get commit OID")?;
+        current_commit_oid = Some(commit_oid);
         let exp_result = git_helpers::expanded_from_commit(commit_oid);
 
         if let Ok(expanded) = exp_result {
@@ -417,6 +558,12 @@ pub async fn git_review(
 
         let exp_result = git_helpers::expanded_from_branch(&branch_name, used_branch_mode);
         if let Ok(expanded) = exp_result {
+            // For branch comparison, the head of the branch is the current commit
+            // Let's get the head commit of the branch
+            let repo = git2::Repository::discover(".")?;
+            let branch_ref = repo.find_branch(&branch_name, git2::BranchType::Local)?;
+            let branch_commit = branch_ref.into_reference().peel_to_commit()?;
+            current_commit_oid = Some(branch_commit.id());
             expcommit = Some(expanded);
         }
     } else if let Some(pr_id) = github_pr {
@@ -424,6 +571,8 @@ pub async fn git_review(
         let pr_expcommit = github::expanded_commit_from_pr(&pr_id)
             .context("Failed to build diff from GitHub pull request")?;
         expcommit = Some(pr_expcommit);
+        // For PRs, we don't have a specific OID, but we can use HEAD
+        current_commit_oid = Some(git_helpers::get_oid("HEAD")?);
     } else {
         //println!("[DEBUG] Reviewing staged changes or HEAD");
         // Staging edits, if empty HEAD commit
@@ -440,6 +589,7 @@ pub async fn git_review(
                 // TODO Better error handling
                 let commit_oid =
                     git_helpers::get_oid(commit_str).context("Failed to get commit OID")?;
+                current_commit_oid = Some(commit_oid);
                 exp_result = git_helpers::expanded_from_commit(commit_oid);
 
                 if let Ok(expanded) = exp_result {
@@ -447,6 +597,8 @@ pub async fn git_review(
                 }
             } else {
                 expcommit = Some(exp_unwrapped);
+                // For staged diffs, the current commit is HEAD
+                current_commit_oid = Some(git_helpers::get_oid("HEAD")?);
             }
         } else {
             // HEAD commit
@@ -456,6 +608,7 @@ pub async fn git_review(
             let commit_str = "HEAD";
             let commit_oid =
                 git_helpers::get_oid(commit_str).context("Failed to get commit OID")?;
+            current_commit_oid = Some(commit_oid);
             exp_result = git_helpers::expanded_from_commit(commit_oid);
 
             if let Ok(expanded) = exp_result {
@@ -473,6 +626,7 @@ pub async fn git_review(
             pipe,
             start_as_chat,
             action_menu,
+            current_commit_oid,
         )
         .await?;
     } else {

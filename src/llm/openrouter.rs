@@ -4,7 +4,8 @@ use anyhow::Result;
 use rig::agent::AgentBuilder;
 use rig::client::CompletionClient;
 use rig::providers::openrouter;
-use rig::streaming::StreamingPrompt;
+use rig::streaming::StreamingChat;
+use rig::message::Message;
 
 pub struct OpenRouterClient {
     pub api_key: String,
@@ -19,7 +20,7 @@ impl OpenRouterClient {
         }
     }
 
-    pub async fn stream_chat(&self, sys_prompt: &str, review_prompt: &str) -> Result<String> {
+    pub async fn stream_chat(&self, sys_prompt: &str, messages: Vec<Message>) -> Result<String> {
         // Check for OPENROUTER_API_KEY environment variable
         let api_key = std::env::var("OPENROUTER_API_KEY").unwrap_or(self.api_key.clone());
 
@@ -29,7 +30,7 @@ impl OpenRouterClient {
 
         let agent = AgentBuilder::new(model).preamble(sys_prompt).build();
 
-        let mut stream = agent.stream_prompt(review_prompt).await;
+        let mut stream = agent.stream_chat("", messages).await;
         let res = rig::agent::stream_to_stdout(&mut stream).await?;
         let full_text = res.response().to_string();
 
@@ -42,10 +43,10 @@ impl LLMProvider for OpenRouterClient {
         "OpenRouter".to_string()
     }
 
-    fn stream_request_stdout(&self, sys_prompt: String, review_prompt: String) -> Result<String> {
+    fn stream_request_stdout(&self, sys_prompt: String, messages: Vec<Message>) -> Result<String> {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current()
-                .block_on(self.stream_chat(&sys_prompt, &review_prompt))
+                .block_on(self.stream_chat(&sys_prompt, messages))
         })
     }
 }
