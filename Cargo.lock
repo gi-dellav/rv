@@ -1501,7 +1501,7 @@ dependencies = [
 
 [[package]]
 name = "rv-tool"
-version = "1.0.0-rc3"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "clap",
