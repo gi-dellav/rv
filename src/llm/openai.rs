@@ -3,9 +3,9 @@ use crate::llm::defs::LLMProvider;
 use anyhow::Result;
 use rig::agent::AgentBuilder;
 use rig::client::CompletionClient;
+use rig::message::Message;
 use rig::providers::openai;
 use rig::streaming::StreamingChat;
-use rig::message::Message;
 
 pub struct OpenAIClient {
     pub api_key: String,
@@ -42,8 +42,7 @@ impl LLMProvider for OpenAIClient {
 
     fn stream_request_stdout(&self, sys_prompt: String, messages: Vec<Message>) -> Result<String> {
         tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current()
-                .block_on(self.stream_chat(&sys_prompt, messages))
+            tokio::runtime::Handle::current().block_on(self.stream_chat(&sys_prompt, messages))
         })
     }
 }

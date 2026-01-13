@@ -4,3 +4,7 @@ We use clap for CLI, git2 for git and async-openai for OpenAPI access.
 We focus on OpenRouter as our default provider.
 We focus on smaller, low-latency low-cost LLMs.
 
+/load test_context.txt
+
+This is the main context file with additional load commands included.
+

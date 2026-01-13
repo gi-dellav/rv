@@ -104,6 +104,48 @@ Act following the rules above.
 =============================
 "#;
 
+/// Process /load and /read-only commands within context files
+fn process_context_commands(content: &str) -> String {
+    let mut result = String::new();
+    let mut current_pos = 0;
+
+    // Find all /load and /read-only commands in the content
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("/load ") || trimmed.starts_with("/read-only ") {
+            // Extract file path from command
+            let parts: Vec<&str> = trimmed.splitn(2, ' ').collect();
+            if parts.len() >= 2 {
+                let file_path = parts[1].trim();
+
+                // Try to load the referenced file
+                if let Ok(loaded_content) = load_context_file(file_path) {
+                    result.push_str(&format!(
+                        "\n[Content loaded from '{}':]\n{}\n",
+                        file_path, loaded_content
+                    ));
+                } else if let Ok(loaded_content) = std::fs::read_to_string(file_path) {
+                    result.push_str(&format!(
+                        "\n[Content loaded from '{}':]\n{}\n",
+                        file_path, loaded_content
+                    ));
+                } else {
+                    result.push_str(&format!(
+                        "\n[Failed to load content from '{}']\n",
+                        file_path
+                    ));
+                }
+            }
+        } else {
+            // Regular line, add as-is
+            result.push_str(line);
+            result.push('\n');
+        }
+    }
+
+    result
+}
+
 fn read_file(filename: &str) -> Option<String> {
     // Load files from project's root directory (where .git is) not current working directory
     let repo = match git2::Repository::discover(".") {
@@ -114,11 +156,29 @@ fn read_file(filename: &str) -> Option<String> {
     let full_path = workdir.join(filename);
     std::fs::read_to_string(&full_path).ok()
 }
+
+fn load_context_file(file_path: &str) -> Result<String> {
+    // Try to read the file relative to current directory first
+    if let Ok(content) = std::fs::read_to_string(file_path) {
+        return Ok(content);
+    }
+
+    // If not found, try relative to git repository root
+    let repo = git2::Repository::discover(".")?;
+    let workdir = repo
+        .workdir()
+        .ok_or_else(|| anyhow::anyhow!("No working directory found"))?;
+    let full_path = workdir.join(file_path);
+
+    std::fs::read_to_string(&full_path)
+        .map_err(|e| anyhow::anyhow!("Failed to read context file '{}': {}", file_path, e))
+}
 /// Add context, guidelines and custom instructions to the LLM prompt
 pub fn pack_prompt(
     base_system_prompt: &str,
     rvconfig: &RvConfig,
     llm_config: Option<&LLMConfig>,
+    load_context: Option<&PathBuf>,
 ) -> Result<String> {
     let mut system_prompt = base_system_prompt.to_string();
     let mut suffix_context: String = String::new();
@@ -127,8 +187,13 @@ pub fn pack_prompt(
     for f in rvconfig.project_guidelines_files.files.clone() {
         let content = read_file(&f);
         if content.is_some() {
+            let content_str = content.unwrap_or_default();
             suffix_context.push_str(&format!("<guideline {f}>"));
-            suffix_context.push_str(&content.unwrap_or_default());
+
+            // Process /load and /read-only commands in guideline files
+            let processed_content = process_context_commands(&content_str);
+            suffix_context.push_str(&processed_content);
+
             suffix_context.push_str("</guideline>");
         }
     }
@@ -137,9 +202,30 @@ pub fn pack_prompt(
     for f in rvconfig.project_context_files.files.clone() {
         let content = read_file(&f);
         if content.is_some() {
+            let content_str = content.unwrap_or_default();
             suffix_context.push_str(&format!("<context {f}>"));
-            suffix_context.push_str(&content.unwrap_or_default());
+
+            // Process /load and /read-only commands in context files
+            let processed_content = process_context_commands(&content_str);
+            suffix_context.push_str(&processed_content);
+
             suffix_context.push_str("</context>");
+        }
+    }
+
+    // Handle load context file if provided
+    if let Some(context_path) = load_context {
+        if let Ok(content) = load_context_file(&context_path.to_string_lossy()) {
+            suffix_context.push_str(&format!("<context {}>", context_path.display()));
+            suffix_context.push_str(&content);
+            suffix_context.push_str("</context>");
+        } else {
+            // Try to read it directly from the path
+            if let Ok(content) = std::fs::read_to_string(context_path) {
+                suffix_context.push_str(&format!("<context {}>", context_path.display()));
+                suffix_context.push_str(&content);
+                suffix_context.push_str("</context>");
+            }
         }
     }
 
@@ -177,6 +263,7 @@ pub async fn raw_review(
     pipe: bool,
     start_as_chat: bool,
     action_menu: Option<bool>,
+    load_context: Option<PathBuf>,
 ) -> Result<()> {
     if let Some(path) = file_path {
         if !path.exists() {
@@ -210,6 +297,7 @@ pub async fn raw_review(
                     start_as_chat,
                     action_menu,
                     None,
+                    load_context.clone(),
                 )
                 .await?;
             }
@@ -269,6 +357,7 @@ pub async fn raw_review(
             start_as_chat,
             action_menu,
             None,
+            load_context.clone(),
         )
         .await?;
     } else {
@@ -299,6 +388,31 @@ fn collect_files(
     Ok(())
 }
 
+/// Handle /load and /read-only commands in chat mode
+fn handle_load_command(command: &str, all_messages: &mut Vec<Message>) -> Result<String> {
+    let parts: Vec<&str> = command.trim().splitn(3, ' ').collect();
+
+    if parts.len() < 2 {
+        return Ok("Usage: /load <file_path> or /read-only <file_path>".to_string());
+    }
+
+    let file_path = parts[1];
+
+    // Try to load the context file
+    match load_context_file(file_path) {
+        Ok(content) => {
+            // Add the context as a system-like message
+            let context_msg = format!("<context {}>\n{}\n</context>", file_path, content);
+            all_messages.push(Message::user(format!("[CONTEXT LOADED: {}]", file_path)));
+            Ok(format!("Successfully loaded context from: {}", file_path))
+        }
+        Err(e) => Ok(format!(
+            "Failed to load context file '{}': {}",
+            file_path, e
+        )),
+    }
+}
+
 async fn process_review(
     rvconfig: &RvConfig,
     llm_selection: Option<String>,
@@ -308,6 +422,7 @@ async fn process_review(
     start_as_chat: bool,
     action_menu: Option<bool>,
     current_commit_oid: Option<git2::Oid>,
+    load_context: Option<PathBuf>,
 ) -> Result<()> {
     // Convert to structured format
     let review_prompt = expcommit.get_xml_structure(rvconfig.diff_profile);
@@ -355,9 +470,19 @@ async fn process_review(
 
     // Determine which system prompt to use
     let system_prompt = if start_as_chat {
-        pack_prompt(CHAT_SYSTEM_PROMPT, rvconfig, Some(llm_configuration))?
+        pack_prompt(
+            CHAT_SYSTEM_PROMPT,
+            rvconfig,
+            Some(llm_configuration),
+            load_context.as_ref(),
+        )?
     } else {
-        pack_prompt(SYSTEM_PROMPT, rvconfig, Some(llm_configuration))?
+        pack_prompt(
+            SYSTEM_PROMPT,
+            rvconfig,
+            Some(llm_configuration),
+            load_context.as_ref(),
+        )?
     };
 
     // Always include the review prompt as the first message
@@ -387,17 +512,32 @@ async fn process_review(
             match action {
                 ActionSelection::EnterChatMode => {
                     current_chat_mode = true;
-                    println!("Entered chat mode. Type '/quit' or '/exit' to return to action menu.");
+                    println!(
+                        "Entered chat mode. Type '/quit' or '/exit' to return to action menu."
+                    );
                     loop {
                         println!("\n");
-                        let input_string = term_helpers::get_terminal_input(String::from("[chat]> "));
+                        let input_string =
+                            term_helpers::get_terminal_input(String::from("[chat]> "));
                         if input_string.trim().is_empty() {
                             continue;
                         }
-                        if input_string.trim() == "/quit" || input_string.trim() == "/exit" {
+
+                        // Handle special commands
+                        let trimmed_input = input_string.trim();
+                        if trimmed_input == "/quit" || trimmed_input == "/exit" {
                             println!("Exiting chat mode.");
                             break;
+                        } else if trimmed_input.starts_with("/load ")
+                            || trimmed_input.starts_with("/read-only ")
+                        {
+                            match handle_load_command(trimmed_input, &mut all_messages) {
+                                Ok(response) => println!("{}", response),
+                                Err(e) => println!("Error: {}", e),
+                            }
+                            continue;
                         }
+
                         let user_input = Message::user(input_string);
                         all_messages.push(user_input);
                         // Get LLM response, which streams to stdout
@@ -490,18 +630,31 @@ async fn process_review(
                 if all_messages.len() == 1 {
                     // The first message is always the review prompt
                     // Get LLM response to the initial review context
-                    let response = client.stream_request_stdout(system_prompt.clone(), all_messages.clone())?;
+                    let response = client
+                        .stream_request_stdout(system_prompt.clone(), all_messages.clone())?;
                     all_messages.push(Message::assistant(response));
                 }
-                
+
                 println!("\n");
                 let input_string = term_helpers::get_terminal_input(String::from("[chat]> "));
                 if input_string.trim().is_empty() {
                     continue;
                 }
-                if input_string.trim() == "/quit" || input_string.trim() == "/exit" {
+
+                // Handle special commands
+                let trimmed_input = input_string.trim();
+                if trimmed_input == "/quit" || trimmed_input == "/exit" {
                     break;
+                } else if trimmed_input.starts_with("/load ")
+                    || trimmed_input.starts_with("/read-only ")
+                {
+                    match handle_load_command(trimmed_input, &mut all_messages) {
+                        Ok(response) => println!("{}", response),
+                        Err(e) => println!("Error: {}", e),
+                    }
+                    continue;
                 }
+
                 let user_input = Message::user(input_string);
                 all_messages.push(user_input);
                 let response =
@@ -511,7 +664,8 @@ async fn process_review(
         } else {
             // Not in chat mode, just get the initial response
             if all_messages.len() == 1 {
-                let response = client.stream_request_stdout(system_prompt.clone(), all_messages.clone())?;
+                let response =
+                    client.stream_request_stdout(system_prompt.clone(), all_messages.clone())?;
                 all_messages.push(Message::assistant(response));
             }
         }
@@ -536,6 +690,7 @@ pub async fn git_review(
     pipe: bool,
     start_as_chat: bool,
     action_menu: Option<bool>,
+    load_context: Option<PathBuf>,
 ) -> Result<()> {
     let mut expcommit: Option<ExpandedCommit> = None;
     let mut current_commit_oid: Option<git2::Oid> = None;
@@ -627,6 +782,7 @@ pub async fn git_review(
             start_as_chat,
             action_menu,
             current_commit_oid,
+            load_context,
         )
         .await?;
     } else {

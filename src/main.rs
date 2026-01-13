@@ -62,6 +62,10 @@ struct Args {
     #[arg(long, action)]
     /// Force post-review actions menu (normally defined by config.toml)
     actions_menu: Option<bool>,
+
+    #[arg(short = 'L', long = "load-context", value_hint = clap::ValueHint::FilePath)]
+    /// Load additional read-only context file
+    load_context: Option<PathBuf>,
 }
 
 #[tokio::main]
@@ -79,6 +83,7 @@ async fn main() {
             args.pipe,
             args.chat,
             args.actions_menu,
+            args.load_context,
         )
         .await
         {
@@ -106,6 +111,7 @@ async fn main() {
             args.pipe,
             args.chat,
             args.actions_menu,
+            args.load_context,
         )
         .await
         {
